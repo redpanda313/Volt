@@ -1,20 +1,21 @@
 extends Node
 
-## Night-3 Volt / bot loops first. Night-2 idle + debris / HUD. Night-1 combat fallbacks.
+## Night-4 on-model run/dash. Night-3 idle / attack / hurt + bots. Night-2 debris / HUD. Night-1 fallbacks.
 
 const SLICE_DIR := "res://art/night1/slices/"
 const NIGHT2_IDLE_DIR := "res://art/night2/slices/volt_idle/"
 const NIGHT2_DEBRIS := "res://art/night2/slices/debris/"
 const NIGHT3_VOLT := "res://art/night3/slices/volt/"
 const NIGHT3_BOTS := "res://art/night3/slices/bots/"
+const NIGHT4_VOLT := "res://art/night4/slices/volt/"
 
 const HUD_TOP := "res://art/night2/hud/hud_top.png"
 const HUD_METER := "res://art/night2/hud/hud_meter.png"
 const HUD_PORTRAIT := "res://art/night2/hud/hud_portrait_9x16.png"
 const HUD_SHEET := "res://art/night2/hud/hud_elements_sheet.png"
 
-## Beat 2 was 0.90. Beat 3 shrinks ~10% again: 0.90 * 0.90.
-const ACTOR_SCALE := 0.81
+## Beat 3 was 0.81 (0.90 × 0.90). Beat 4 shrinks ~15% more: 0.81 * 0.85.
+const ACTOR_SCALE := 0.6885
 
 const VOLT_IDLE := "volt_idle"
 const VOLT_ATTACK := "volt_attack"
@@ -61,10 +62,24 @@ func sequence_frames(dir: String, prefixes: Array[String], max_n: int = 8) -> Ar
 	return []
 
 
+func _volt_dir_frames(root: String, anim: String) -> Array[Texture2D]:
+	var folder := "knockback" if anim == "hurt" else anim
+	var dir := "%s%s/" % [root, folder]
+	return sequence_frames(dir, [
+		"%s_" % folder,
+		"%s_" % anim,
+		"volt_%s_" % folder,
+		"volt_%s_" % anim,
+	], 8)
+
+
 func volt_idle_frames() -> Array[Texture2D]:
-	var night3 := volt_frames("idle")
+	var night3 := _volt_dir_frames(NIGHT3_VOLT, "idle")
 	if not night3.is_empty():
 		return night3
+	var night4 := _volt_dir_frames(NIGHT4_VOLT, "idle")
+	if not night4.is_empty():
+		return night4
 	var frames: Array[Texture2D] = []
 	for i in range(1, 5):
 		var path := "%svolt_idle_%02d.png" % [NIGHT2_IDLE_DIR, i]
@@ -79,27 +94,43 @@ func volt_idle_frames() -> Array[Texture2D]:
 	return frames
 
 
+## Night4 dash is the on-model run/dash. Dedicated run/ wins if Sable drops it.
+## Night3 dash is off-model and is never used here.
+func volt_travel_frames() -> Array[Texture2D]:
+	var night4_run := _volt_dir_frames(NIGHT4_VOLT, "run")
+	if not night4_run.is_empty():
+		return night4_run
+	var night4_dash := _volt_dir_frames(NIGHT4_VOLT, "dash")
+	if not night4_dash.is_empty():
+		return night4_dash
+	var dodge := tex(VOLT_DODGE)
+	var frames: Array[Texture2D] = []
+	if dodge:
+		frames.append(dodge)
+	return frames
+
+
+func has_night4_travel() -> bool:
+	return not _volt_dir_frames(NIGHT4_VOLT, "run").is_empty() \
+		or not _volt_dir_frames(NIGHT4_VOLT, "dash").is_empty()
+
+
 func volt_frames(anim: String) -> Array[Texture2D]:
-	var folder := "knockback" if anim == "hurt" else anim
-	var dir := "%s%s/" % [NIGHT3_VOLT, folder]
-	var frames := sequence_frames(dir, [
-		"%s_" % folder,
-		"%s_" % anim,
-		"volt_%s_" % folder,
-		"volt_%s_" % anim,
-	], 8)
-	if not frames.is_empty():
-		return frames
+	if anim == "run" or anim == "dash":
+		return volt_travel_frames()
+	var night3 := _volt_dir_frames(NIGHT3_VOLT, anim)
+	if not night3.is_empty():
+		return night3
+	var night4 := _volt_dir_frames(NIGHT4_VOLT, anim)
+	if not night4.is_empty():
+		return night4
+	var frames: Array[Texture2D] = []
 	if anim == "idle":
 		return []
 	if anim == "attack":
 		var attack := tex(VOLT_ATTACK)
 		if attack:
 			frames.append(attack)
-	elif anim == "dash":
-		var dodge := tex(VOLT_DODGE)
-		if dodge:
-			frames.append(dodge)
 	elif anim == "hurt":
 		var hurt := tex(VOLT_DODGE)
 		if hurt:

@@ -113,6 +113,7 @@ func _physics_process(delta: float) -> void:
 
 func _follow_camera(delta: float) -> void:
 	var focus_y := minf(volt.global_position.y - 360.0, pile.playable_y() - 360.0)
+	focus_y += clampf(volt.velocity.y * 0.05, -42.0, 42.0)
 	var target := Vector2(360.0, clampf(focus_y, -1800.0, 640.0))
 	camera.position = camera.position.lerp(target, clampf(8.0 * delta, 0.0, 1.0))
 
@@ -162,7 +163,7 @@ func _on_swiped(direction: Vector2) -> void:
 func _dash(direction: Vector2) -> void:
 	volt.apply_dash(direction)
 	juice.dash_whoosh()
-	juice.ghost(volt.visual)
+	juice.start_trail(volt.visual, 0.22)
 	hud.toast("DASH")
 
 
@@ -178,14 +179,19 @@ func _launch_nearest() -> void:
 
 
 func _launch_at(target: Enemy) -> void:
-	var chest := target.global_position + Vector2(0.0, -target.hit_size.y * 0.4)
-	volt.launch_at(chest)
-	hud.toast("LAUNCH")
+	volt.launch_at_bot(target)
+	juice.dash_whoosh()
+	juice.start_trail(volt.visual, 0.34)
+	hud.toast("STRIKE")
 
 
 func _tick_launch_hits() -> void:
 	if not volt.is_launching():
 		return
+	if volt.seek_bot != null and is_instance_valid(volt.seek_bot) and not volt.seek_bot.dead:
+		if volt.strikes(volt.seek_bot):
+			_strike_on_contact(volt.seek_bot)
+			return
 	for child in enemies.get_children():
 		var bot := child as Enemy
 		if bot == null or bot.dead:
@@ -414,9 +420,9 @@ func _run_demo() -> void:
 		bot = _nearest_enemy(volt.global_position + Vector2(140, -40), 640.0)
 	if bot:
 		_launch_at(bot)
-		await get_tree().create_timer(0.18).timeout
+		await get_tree().create_timer(0.32).timeout
 		await _shot("02_launch_attack")
-		await get_tree().create_timer(0.70).timeout
+		await get_tree().create_timer(0.55).timeout
 		await _shot("03_bounce_debris")
 	_dash(Vector2(-0.85, -0.45))
 	await get_tree().create_timer(0.22).timeout
