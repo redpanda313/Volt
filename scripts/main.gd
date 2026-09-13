@@ -421,14 +421,26 @@ func _run_demo() -> void:
 	_dash(Vector2(-0.85, -0.45))
 	await get_tree().create_timer(0.22).timeout
 	await _shot("04_omni_dash")
-	if bot and is_instance_valid(bot) and not bot.dead:
-		_hurt_volt(bot)
-		await get_tree().create_timer(0.16).timeout
-		await _shot("05_knockback_pulse")
+	var knocker := _nearest_enemy(volt.global_position, 900.0)
+	volt.invuln = 0.0
+	if knocker:
+		_hurt_volt(knocker)
 	else:
-		_dash(Vector2(0.2, -1.0))
-		await get_tree().create_timer(0.20).timeout
-		await _shot("05_dash_up")
+		volt.apply_knockback(volt.global_position + Vector2(90, 0), 640.0, -70.0)
+		volt.take_hit()
+		juice.damage_pulse()
+	await get_tree().create_timer(0.10).timeout
+	await _shot("05_knockback_pulse")
+	volt.dashing = false
+	volt.global_position.y = pile.playable_y()
+	var warden := _enemy_scene.instantiate() as Enemy
+	enemies.add_child(warden)
+	warden.setup(Enemy.Kind.WARDEN, Vector2(500.0, pile.playable_y()), 380.0)
+	await get_tree().create_timer(0.45).timeout
+	await _shot("06_warden_on_pile")
+	_dash(Vector2(0.15, -1.0))
+	await get_tree().create_timer(0.18).timeout
+	await _shot("07_dash_up")
 	if OS.get_environment("VOLT_DEMO_QUIT") == "1":
 		await get_tree().create_timer(0.35).timeout
 		get_tree().quit()

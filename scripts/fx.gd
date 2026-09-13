@@ -3,8 +3,8 @@ class_name Juice
 
 ## Premium hit juice: camera trauma, damage pulse, impact bursts, punchy SFX.
 
-const SHAKE_PX := 34.0
-const TRAUMA_DECAY := 2.4
+const SHAKE_PX := 52.0
+const TRAUMA_DECAY := 1.05
 
 var camera: Camera2D
 var world: Node2D
@@ -43,7 +43,7 @@ func _process(delta: float) -> void:
 		_hitstop_until_ms = 0
 	if trauma > 0.0:
 		trauma = maxf(0.0, trauma - TRAUMA_DECAY * delta)
-		var mag := trauma * trauma * SHAKE_PX
+		var mag := pow(trauma, 1.2) * SHAKE_PX
 		if camera:
 			camera.offset = Vector2(randf_range(-mag, mag), randf_range(-mag, mag))
 	elif camera:
@@ -54,8 +54,8 @@ func add_trauma(amount: float) -> void:
 	trauma = clampf(trauma + amount, 0.0, 1.0)
 
 
-func hitstop(seconds: float = 0.055) -> void:
-	Engine.time_scale = 0.14
+func hitstop(seconds: float = 0.08) -> void:
+	Engine.time_scale = 0.12
 	_hitstop_until_ms = Time.get_ticks_msec() + int(seconds * 1000.0)
 
 
@@ -67,18 +67,20 @@ func pulse(color: Color, peak_a: float = 0.55, fade: float = 0.18) -> void:
 
 
 func damage_pulse() -> void:
-	pulse(Color(1.0, 0.12, 0.18), 0.62, 0.22)
-	add_trauma(0.92)
-	hitstop(0.07)
+	pulse(Color(1.0, 0.08, 0.16), 0.78, 0.34)
+	add_trauma(1.0)
+	hitstop(0.09)
 	play("hurt")
 
 
 func attack_punch(world_pos: Vector2) -> void:
-	add_trauma(0.62)
-	hitstop(0.05)
-	pulse(Color(0.55, 0.95, 1.0), 0.28, 0.12)
-	burst(world_pos, Color(0.35, 0.95, 1.0), 22)
-	ring(world_pos, Color(0.45, 1.0, 1.0, 0.9), 28.0, 140.0)
+	add_trauma(0.78)
+	hitstop(0.07)
+	pulse(Color(0.65, 0.98, 1.0), 0.42, 0.20)
+	burst(world_pos, Color(0.35, 0.95, 1.0), 34)
+	burst(world_pos, Color(1.0, 0.95, 0.55), 16)
+	ring(world_pos, Color(0.45, 1.0, 1.0, 0.95), 22.0, 190.0)
+	_streak(world_pos)
 	play("slash")
 	play("hit")
 
@@ -122,15 +124,15 @@ func burst(world_pos: Vector2, color: Color, amount: int = 18) -> void:
 	particles.one_shot = true
 	particles.explosiveness = 0.96
 	particles.amount = amount
-	particles.lifetime = 0.38
+	particles.lifetime = 0.48
 	particles.emitting = false
 	particles.direction = Vector2(0, -1)
 	particles.spread = 180.0
-	particles.gravity = Vector2(0, 720)
-	particles.initial_velocity_min = 220.0
-	particles.initial_velocity_max = 520.0
-	particles.scale_amount_min = 2.4
-	particles.scale_amount_max = 5.5
+	particles.gravity = Vector2(0, 780)
+	particles.initial_velocity_min = 260.0
+	particles.initial_velocity_max = 620.0
+	particles.scale_amount_min = 3.2
+	particles.scale_amount_max = 7.5
 	particles.color = color
 	particles.z_index = 8
 	world.add_child(particles)
@@ -171,6 +173,22 @@ func ghost(from: Node2D, color: Color = Color(0.45, 0.95, 1.0, 0.45)) -> void:
 	var tween := world.create_tween()
 	tween.tween_property(snap, "modulate:a", 0.0, 0.22)
 	tween.tween_callback(snap.queue_free)
+
+
+func _streak(world_pos: Vector2) -> void:
+	if world == null:
+		return
+	var line := Line2D.new()
+	line.width = 10.0
+	line.default_color = Color(0.55, 1.0, 1.0, 0.95)
+	line.z_index = 9
+	line.points = PackedVector2Array([Vector2(-70, 18), Vector2(90, -40)])
+	world.add_child(line)
+	line.global_position = world_pos
+	var tween := world.create_tween()
+	tween.tween_property(line, "width", 0.0, 0.16)
+	tween.parallel().tween_property(line, "modulate:a", 0.0, 0.16)
+	tween.tween_callback(line.queue_free)
 
 
 func play(sfx_name: String) -> void:

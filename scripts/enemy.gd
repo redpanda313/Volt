@@ -266,15 +266,14 @@ func _stick_to_pile() -> void:
 
 
 func _face(dir: float) -> void:
-	if absf(dir) < 0.01:
+	if absf(dir) < 0.01 or visual == null:
 		return
-	var face := 1.0 if dir >= 0.0 else -1.0
-	visual.scale = Vector2(absf(_base_scale.x) * face, _base_scale.y)
+	visual.flip_h = dir < 0.0
+	visual.scale = Vector2(absf(_base_scale.x), absf(_base_scale.y))
 
 
-func _flipped_scale(dir: float) -> Vector2:
-	var face := 1.0 if dir >= 0.0 else -1.0
-	return Vector2(absf(_base_scale.x) * face, _base_scale.y)
+func _flipped_scale(_dir: float) -> Vector2:
+	return Vector2(absf(_base_scale.x), absf(_base_scale.y))
 
 
 func _tick_popper(delta: float) -> void:
