@@ -108,7 +108,7 @@ func _build() -> void:
 	_hint.size = Vector2(648, 56)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint.text = "Tap a bot   ·   Swipe any direction to dash"
+	_hint.text = "Tap a bot to dash in   ·   Swipe any direction to dash"
 	root.add_child(_hint)
 
 	_toast = _label(Vector2(160, 248), 26, Color(1, 0.92, 0.45))

@@ -2,7 +2,7 @@ extends Node
 class_name Gesture
 
 ## Tap vs swipe. Mouse and touch both work (web + editor + phones).
-## Swipe any direction = dash. Tap a bot = launch. No joystick / attack button.
+## Swipe any direction = dash. Tap a bot = dash all the way in, strike on contact. No joystick / attack button.
 
 signal tapped(screen_pos: Vector2)
 signal swiped(direction: Vector2)

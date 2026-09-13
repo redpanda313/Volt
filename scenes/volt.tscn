@@ -22,6 +22,9 @@ visible = false
 [node name="Dash" type="AnimatedSprite2D" parent="Visual"]
 visible = false
 
+[node name="Run" type="AnimatedSprite2D" parent="Visual"]
+visible = false
+
 [node name="Hurt" type="AnimatedSprite2D" parent="Visual"]
 visible = false
 

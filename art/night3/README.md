@@ -7,7 +7,7 @@ Godot loads these first; night-2 idle / night-1 poses are fallbacks.
 
 - `slices/volt/idle/idle_01..06.png` — breathing idle loop
 - `slices/volt/attack/attack_01..06.png` — wind-up → swing → recover
-- `slices/volt/dash/dash_01..06.png` — dash/dodge
+- `slices/volt/dash/dash_01..06.png` — **off-model** (vest / olive pants). Beat 4 plays night4 dash instead.
 - `slices/volt/knockback/knockback_01..06.png` — hit → recoil → recover
 
 Wired as `SpriteFrames` on `World/Volt/Visual/{Idle,Attack,Dash,Hurt}`.
