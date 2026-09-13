@@ -2,15 +2,19 @@ extends Node
 class_name Gesture
 
 ## Tap vs swipe. Mouse and touch both work (web + editor + phones).
+## Swipe L/R = move. Swipe up = jump. No joystick / attack button.
 
 signal tapped(screen_pos: Vector2)
-signal swiped(direction: Vector2)
+signal swiped_horizontal(direction: float)
+signal swiped_up
 
 const SWIPE_PX := 56.0
+const UP_BIAS := 0.82
 
 var _pressing := false
 var _origin := Vector2.ZERO
 var _did_swipe := false
+var _last_emit_ms := 0
 
 
 func _ready() -> void:
@@ -47,10 +51,9 @@ func _begin(pos: Vector2) -> void:
 func _drag(pos: Vector2) -> void:
 	if not _pressing or _did_swipe:
 		return
-	var delta := pos - _origin
-	if delta.length() >= SWIPE_PX:
+	if (pos - _origin).length() >= SWIPE_PX:
 		_did_swipe = true
-		swiped.emit(delta.normalized())
+		_emit_swipe(pos)
 
 
 func _end(pos: Vector2) -> void:
@@ -59,8 +62,25 @@ func _end(pos: Vector2) -> void:
 	_pressing = false
 	if _did_swipe:
 		return
-	var delta := pos - _origin
-	if delta.length() >= SWIPE_PX:
-		swiped.emit(delta.normalized())
-	else:
+	if (pos - _origin).length() >= SWIPE_PX:
+		_emit_swipe(pos)
+	elif _debounce():
 		tapped.emit(pos)
+
+
+func _emit_swipe(pos: Vector2) -> void:
+	if not _debounce():
+		return
+	var delta := pos - _origin
+	if delta.y < 0.0 and absf(delta.y) >= absf(delta.x) * UP_BIAS:
+		swiped_up.emit()
+	else:
+		swiped_horizontal.emit(1.0 if delta.x >= 0.0 else -1.0)
+
+
+func _debounce() -> bool:
+	var now := Time.get_ticks_msec()
+	if now - _last_emit_ms < 40:
+		return false
+	_last_emit_ms = now
+	return true
