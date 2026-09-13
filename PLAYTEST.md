@@ -22,7 +22,7 @@ Empty taps do nothing. Do not look for a virtual stick or an ATTACK button.
 ## Checklist vs Pete’s beat-4 notes
 
 1. **Juice polish** — same trauma / hitstop / pulse / burst / ring / SFX base. Added camera zoom punch + rotation + directional kick, `WorldEnvironment` 2D glow (canvas max layer 0 so HUD stays clean), hit bloom flash, additive impact halo, dash afterimage trail. Must feel more premium, not quieter.
-2. **Night4 on-model run/dash** — `art/night4/slices/volt/dash/dash_01..06.png` is the travel loop (blue hex chest, brown pants, blue greaves, wrench-staff). Optional `art/night4/slices/volt/run/` wins if it lands. **Night3 dash is off-model and is not used.** Idle / attack / hurt stay night3 unless a night4 copy is the only file present. Missing night4 travel falls back to night-1 `volt_dodge.png`.
+2. **Night4 on-model run/dash** — `art/night4/slices/volt/dash/dash_01..06.png` is in the repo and is the travel loop (blue hex chest, brown pants, blue greaves, wrench-staff). Optional `art/night4/slices/volt/run/` wins if a dedicated run pack lands. **Night3 dash is off-model and is not used.** Idle / attack / hurt stay night3 canonical.
 3. **Scale** — another ~15% shrink on top of beat 3: `Art.ACTOR_SCALE = 0.6885` (0.81 × 0.85).
 4. **Dash** — vs beat 3 (820 × 0.50): speed ×1.3 (`DASH_SPEED` 1066), distance ×0.5 (`DASH_SECS` 0.1923). Air dash 988 × same duration. Afterimage upgrade still lengthens the dash.
 5. **Gravity** — faster start (`GRAVITY` 3000) + higher fall terminal (`FALL_GRAVITY` 4200, `MAX_FALL` 1750). Bot gravity stays 2100 so pile locomotion does not regress.

@@ -4,24 +4,24 @@ On-model **run/dash** for Volt. Locked to the idle kit: blue hex chest, brown pa
 
 Night3 `dash/` is **off-model** (vest / olive pants) and must not play for run or dash.
 
-## Volt travel (wire these first)
+## Volt travel (in repo)
 
-- `slices/volt/dash/dash_01..06.png` — on-model run **and** dash (same loop until a dedicated run pack lands)
+- `slices/volt/dash/dash_01..06.png` — on-model run **and** dash (same 6-frame loop)
 - `slices/volt/run/run_01..06.png` — optional dedicated run. If present, `Art.volt_travel_frames()` prefers this over `dash/`
 
-Godot loads night4 travel via `Art.volt_travel_frames()` / `Art.volt_frames("run"|"dash")` onto `World/Volt/Visual/Run` and `Visual/Dash`.
+Godot loads night4 travel via `Art.volt_travel_frames()` onto `World/Volt/Visual/Run` and `Visual/Dash`.
 
 If this folder is empty, travel falls back to night-1 `volt_dodge.png` — **not** night3 dash.
 
-## Idle / attack / knockback
+## Idle / attack / knockback stay night3 (canonical)
 
-Night3 remains canonical:
+Do **not** replace these with night4 copies unless night3 is missing:
 
-- idle → `art/night3/slices/volt/idle/`
-- attack → `art/night3/slices/volt/attack/`
-- hurt → `art/night3/slices/volt/knockback/`
+- idle → `art/night3/slices/volt/idle/idle_01..06.png`
+- attack → `art/night3/slices/volt/attack/attack_01..06.png`
+- hurt / knockback → `art/night3/slices/volt/knockback/knockback_01..06.png`
 
-Night4 copies of those folders are used only when the night3 file is missing (canonical carries).
+Night4 idle/attack/knockback folders are unused while those night3 files exist.
 
 Also accepted in each Volt folder: `volt_dash_01.png`, `dash1.png`, `run_01.png`.
 
