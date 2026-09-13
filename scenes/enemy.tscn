@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemy.gd" id="1_enemy"]
+
+[node name="Enemy" type="Node2D"]
+script = ExtResource("1_enemy")
+
+[node name="Telegraph" type="Node2D" parent="."]
+visible = false
+
+[node name="Ring" type="Polygon2D" parent="Telegraph"]
+color = Color(1, 0.35, 0.28, 0.28)
+polygon = PackedVector2Array(-90, -10, -70, -50, -20, -78, 30, -78, 80, -46, 92, 0, 74, 40, 20, 58, -30, 54, -78, 24)
+
+[node name="Visual" type="Sprite2D" parent="."]

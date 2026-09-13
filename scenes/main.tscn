@@ -1,0 +1,34 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/sky.gd" id="2_sky"]
+[ext_resource type="Script" path="res://scripts/pile.gd" id="3_pile"]
+[ext_resource type="PackedScene" path="res://scenes/volt.tscn" id="4_volt"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="5_hud"]
+[ext_resource type="Script" path="res://scripts/gesture.gd" id="6_gesture"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(360, 640)
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Sky" type="Node2D" parent="World"]
+script = ExtResource("2_sky")
+
+[node name="Pile" type="Node2D" parent="World"]
+position = Vector2(230, 980)
+script = ExtResource("3_pile")
+
+[node name="Volt" parent="World" instance=ExtResource("4_volt")]
+position = Vector2(230, 900)
+
+[node name="Enemies" type="Node2D" parent="World"]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("5_hud")
+
+[node name="Gesture" type="Node" parent="."]
+script = ExtResource("6_gesture")

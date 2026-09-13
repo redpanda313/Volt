@@ -1,0 +1,37 @@
+; Engine configuration file.
+; Godot 4.7 2D — Volt jam. Not Unity.
+config_version=5
+
+[application]
+
+config/name="Volt"
+config/description="Portrait 9:16 side-view climb. Tap to hit, swipe to dodge. Godot 2D only."
+config/version="0.1.0"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+boot_splash/bg_color=Color(0.027451, 0.0313726, 0.0784314, 1)
+config/icon="res://icon.svg"
+
+[autoload]
+
+Art="*res://scripts/art.gd"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/size/window_width_override=405
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=1
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/canvas_textures/default_texture_filter=1
+environment/defaults/default_clear_color=Color(0.027451, 0.0313726, 0.0784314, 1)
