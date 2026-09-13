@@ -38,8 +38,8 @@ func _build() -> void:
 	_chrome_top = TextureRect.new()
 	_chrome_top.name = "ChromeTop"
 	_chrome_top.texture = Art.hud_tex(Art.HUD_TOP)
-	_chrome_top.position = Vector2(16, 12)
-	_chrome_top.size = Vector2(688, 92)
+	_chrome_top.position = Vector2(16, 10)
+	_chrome_top.size = Vector2(688, 84)
 	_chrome_top.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_chrome_top.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_chrome_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -48,33 +48,29 @@ func _build() -> void:
 	_chrome_meter = TextureRect.new()
 	_chrome_meter.name = "ChromeMeter"
 	_chrome_meter.texture = Art.hud_tex(Art.HUD_METER)
-	_chrome_meter.position = Vector2(6, 118)
-	_chrome_meter.size = Vector2(156, 250)
+	_chrome_meter.position = Vector2(8, 108)
+	_chrome_meter.size = Vector2(148, 236)
 	_chrome_meter.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_chrome_meter.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
 	_chrome_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_chrome_meter)
 
-	_score = _label(Vector2(48, 28), 40, Color(0.96, 0.98, 1.0))
+	_score = _label(Vector2(56, 22), 36, Color(0.96, 0.98, 1.0))
 	_score.name = "ScoreLabel"
-	_score.size = Vector2(360, 52)
-	_score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_score.add_theme_color_override("font_outline_color", Color(0.04, 0.07, 0.14, 0.9))
-	_score.add_theme_constant_override("outline_size", 6)
+	_score.size = Vector2(400, 50)
+	_score.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	root.add_child(_score)
 
-	_level = _label(Vector2(548, 34), 30, Color(0.95, 0.98, 1.0))
+	_level = _label(Vector2(548, 26), 28, Color(0.95, 0.98, 1.0))
 	_level.name = "LevelLabel"
-	_level.size = Vector2(88, 44)
+	_level.size = Vector2(80, 42)
 	_level.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_level.add_theme_color_override("font_outline_color", Color(0.04, 0.07, 0.14, 0.9))
-	_level.add_theme_constant_override("outline_size", 5)
 	root.add_child(_level)
 
-	_height = _label(Vector2(168, 108), 16, Color(0.55, 0.86, 1.0, 0.95))
+	_height = _label(Vector2(200, 102), 18, Color(0.55, 0.86, 1.0, 0.95))
 	_height.name = "HeightLabel"
-	_height.size = Vector2(200, 24)
-	_height.text = "0 m  ·  GROUND"
+	_height.size = Vector2(280, 26)
+	_height.text = "0 m   GROUND"
 	root.add_child(_height)
 
 	_meter = ProgressBar.new()
@@ -101,23 +97,26 @@ func _build() -> void:
 
 	_hearts = HBoxContainer.new()
 	_hearts.name = "Hearts"
-	_hearts.position = Vector2(400, 108)
+	_hearts.position = Vector2(520, 100)
 	_hearts.add_theme_constant_override("separation", 7)
 	_hearts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_hearts)
 	set_hp(3)
 
-	_hint = _label(Vector2(40, 1168), 20, Color(0.92, 0.97, 1.0, 0.92))
+	_hint = _label(Vector2(36, 1188), 18, Color(0.92, 0.97, 1.0, 0.92))
 	_hint.name = "Hint"
-	_hint.size = Vector2(640, 48)
+	_hint.size = Vector2(648, 56)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint.text = "TAP enemy to launch   ·   SWIPE move   ·   SWIPE UP jump"
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hint.text = "Tap bot  ·  Swipe L/R  ·  Swipe up"
 	root.add_child(_hint)
 
-	_toast = _label(Vector2(80, 240), 28, Color(1, 0.92, 0.45))
+	_toast = _label(Vector2(160, 248), 26, Color(1, 0.92, 0.45))
 	_toast.name = "Toast"
-	_toast.size = Vector2(560, 40)
+	_toast.size = Vector2(400, 40)
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast.add_theme_color_override("font_outline_color", Color(0.05, 0.06, 0.12, 0.85))
+	_toast.add_theme_constant_override("outline_size", 4)
 	_toast.text = ""
 	root.add_child(_toast)
 
@@ -158,7 +157,7 @@ func set_height(meters: float) -> void:
 		band = "SKY"
 	elif meters >= 50.0:
 		band = "PEAK"
-	_height.text = "%d m  ·  %s" % [int(meters), band]
+	_height.text = "%d m   %s" % [int(meters), band]
 	_meter.value = meters
 
 

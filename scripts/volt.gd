@@ -18,11 +18,12 @@ const ATTACK_SECS := 0.22
 const DODGE_SECS := 0.40
 const DODGE_SECS_UP := 0.70
 const HURT_IFRAMES := 0.55
-const STRIKE_RANGE := 88.0
+const STRIKE_RANGE := 128.0
 const BOUNCE_UP := -340.0
 const BOUNCE_BACK := 280.0
 const MIN_X := 56.0
 const MAX_X := 664.0
+const LAUNCH_MIN_UP := -280.0
 
 @onready var visual: Node2D = $Visual
 @onready var idle: AnimatedSprite2D = $Visual/Idle
@@ -38,6 +39,7 @@ var long_dodge: bool = false
 var rest_x: float = 230.0
 var launching: bool = false
 var dodge_left: float = 0.0
+var launch_grace: float = 0.0
 
 
 func _ready() -> void:
@@ -88,9 +90,11 @@ func _physics_process(delta: float) -> void:
 			_show_idle()
 	if dodge_left > 0.0:
 		dodge_left = maxf(0.0, dodge_left - delta)
+	if launch_grace > 0.0:
+		launch_grace = maxf(0.0, launch_grace - delta)
 
 	if launching:
-		velocity.y += GRAVITY * 0.55 * delta
+		velocity.y += GRAVITY * 0.45 * delta
 	else:
 		velocity.y += GRAVITY * delta
 		velocity.y = minf(velocity.y, MAX_FALL)
@@ -100,7 +104,7 @@ func _physics_process(delta: float) -> void:
 	floor_snap_length = 0.0 if launching else 8.0
 	move_and_slide()
 	global_position.x = clampf(global_position.x, MIN_X, MAX_X)
-	if launching and is_on_floor() and velocity.y >= 0.0:
+	if launching and launch_grace <= 0.0 and is_on_floor() and velocity.y >= 0.0:
 		launching = false
 		_show_idle()
 
@@ -155,13 +159,13 @@ func launch_at(world_target: Vector2) -> void:
 	visual.scale.x = facing
 	var dir := to.normalized()
 	velocity = dir * LAUNCH_SPEED
-	if velocity.y > -80.0:
-		velocity.y = minf(velocity.y, -80.0)
+	velocity.y = minf(velocity.y, LAUNCH_MIN_UP)
 	launching = true
+	launch_grace = 0.22
 	dodge_left = 0.0
-	invuln = maxf(invuln, 0.16)
+	invuln = maxf(invuln, 0.20)
 	_show_pose(attack)
-	pose_left = ATTACK_SECS + 0.12
+	pose_left = 0.55
 	floor_snap_length = 0.0
 
 
@@ -178,8 +182,12 @@ func bounce_from(other: Vector2) -> void:
 func strikes(bot: Enemy) -> bool:
 	if not launching:
 		return false
+	var my_chest := global_position + Vector2(0.0, -52.0)
 	var chest := bot.global_position + Vector2(0.0, -bot.hit_size.y * 0.35)
-	return global_position.distance_to(chest) <= STRIKE_RANGE
+	if my_chest.distance_to(chest) <= STRIKE_RANGE:
+		return true
+	return absf(global_position.x - bot.global_position.x) < 78.0 \
+		and absf(global_position.y - bot.global_position.y) < 150.0
 
 
 func take_hit() -> void:

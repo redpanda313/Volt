@@ -35,7 +35,7 @@ func _build(texture: Texture2D) -> void:
 	_sprite.centered = true
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	var long_side := maxf(float(texture.get_width()), float(texture.get_height()))
-	var fit := 52.0 / maxf(long_side, 1.0)
+	var fit := 64.0 / maxf(long_side, 1.0)
 	_sprite.scale = Vector2(fit, fit)
 	add_child(_sprite)
 	var col := CollisionShape2D.new()

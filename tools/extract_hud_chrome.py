@@ -88,6 +88,14 @@ def main() -> None:
                 r, g, b, a = px[x, y]
                 if a > 0 and r > 210 and g > 210 and b > 210:
                     px[x, y] = panel
+        # Recessed placeholder digits still leave dark outlines — paint the wells.
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(top_im)
+        draw.rounded_rectangle((70, 28, 720, th - 18), radius=18, fill=panel)
+        draw.rounded_rectangle((int(tw * 0.72), 28, int(tw * 0.88), th - 22), radius=14, fill=panel)
+        # Drop the stray HEIGHT chip under the capsule.
+        if th > 8:
+            top_im = top_im.crop((0, 0, tw, min(th, 148)))
         top_im.save(OUT / "hud_top.png")
         print("top", tbox, top_im.size)
 
@@ -98,22 +106,7 @@ def main() -> None:
         meter.crop(mbox).save(OUT / "hud_meter.png")
         print("meter", mbox, meter.crop(mbox).size)
 
-    # Portrait: punch playfield + outer navy so we have a 9:16 overlay hook.
-    portrait = Image.open(PORTRAIT).convert("RGBA")
-    pbg = portrait.getpixel((2, 2))[:3]
-    punched = flood_clear(
-        portrait,
-        [
-            (2, 2),
-            (portrait.width - 3, 2),
-            (2, portrait.height - 3),
-            (portrait.width // 2, int(portrait.height * 0.72)),
-        ],
-        pbg,
-        tol=20,
-    )
-    punched.save(OUT / "hud_chrome.png")
-    print("portrait chrome", punched.size, "opaque", sum(1 for p in punched.getdata() if p[3] > 20))
+    print("wrote hud_top.png and hud_meter.png")
 
 
 if __name__ == "__main__":

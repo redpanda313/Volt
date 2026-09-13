@@ -53,6 +53,8 @@ func _ready() -> void:
 	hud.fade_hint()
 	camera.position = Vector2(360, 640)
 	volt.invuln = 0.75
+	if OS.get_environment("VOLT_DEMO") == "1":
+		_run_demo()
 
 
 func _build_arena() -> void:
@@ -408,3 +410,44 @@ func _save_best(value: int) -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("run", "best", value)
 	cfg.save(SAVE_PATH)
+
+
+func _run_demo() -> void:
+	await get_tree().create_timer(0.85).timeout
+	await _shot("01_idle_hud")
+	var bot := _nearest_enemy(volt.global_position + Vector2(140, -40), 640.0)
+	if bot == null:
+		await get_tree().create_timer(0.7).timeout
+		bot = _nearest_enemy(volt.global_position + Vector2(140, -40), 640.0)
+	if bot:
+		_launch_at(bot)
+		await get_tree().create_timer(0.18).timeout
+		await _shot("02_launch_attack")
+		await get_tree().create_timer(0.70).timeout
+		await _shot("03_bounce_debris")
+	_dodge(-1.0)
+	await get_tree().create_timer(0.2).timeout
+	await _shot("04_dodge_knock")
+	_jump()
+	await get_tree().create_timer(0.22).timeout
+	await _shot("05_jump")
+	if OS.get_environment("VOLT_DEMO_QUIT") == "1":
+		await get_tree().create_timer(0.35).timeout
+		get_tree().quit()
+
+
+func _shot(slug: String) -> void:
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var tex := get_viewport().get_texture()
+	if tex == null:
+		return
+	var img := tex.get_image()
+	if img == null:
+		return
+	var dir := OS.get_environment("VOLT_SHOT_DIR")
+	if dir == "":
+		dir = "/opt/cursor/artifacts/screenshots"
+	DirAccess.make_dir_recursive_absolute(dir)
+	img.save_png("%s/%s.png" % [dir, slug])
+
