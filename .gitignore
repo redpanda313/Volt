@@ -5,6 +5,7 @@ export/ios/
 export/web/*
 !export/web/.gitkeep
 !export/web/README.md
+!export/web/.gdignore
 .import/
 *.apk
 *.aab

@@ -46,6 +46,7 @@ func _ready() -> void:
 	hud.set_hp(volt.hp)
 	hud.fade_hint()
 	camera.position = Vector2(360, 640)
+	volt.invuln = 0.75
 
 
 func _process(delta: float) -> void:
@@ -94,7 +95,9 @@ func _on_tapped(screen_pos: Vector2) -> void:
 	var world := _screen_to_world(screen_pos)
 	var target := _enemy_at(world)
 	if target == null:
-		target = _nearest_enemy(world, 92.0)
+		target = _nearest_enemy(world, 160.0)
+	if target == null:
+		target = _nearest_enemy(volt.global_position + Vector2(170, -20), 560.0)
 	if target == null:
 		return
 	_strike(target)
@@ -167,11 +170,11 @@ func _spawn_bot() -> void:
 	var bot := _enemy_scene.instantiate() as Enemy
 	enemies.add_child(bot)
 	var kind := _pick_kind()
-	var stop_x := 428.0 + randf_range(-18.0, 36.0)
+	var stop_x := 318.0 + randf_range(-8.0, 18.0)
 	if kind == Enemy.Kind.POPPER:
-		stop_x = 470.0 + randf_range(-10.0, 24.0)
+		stop_x = 348.0 + randf_range(-8.0, 16.0)
 	if kind == Enemy.Kind.WARDEN:
-		stop_x = 452.0
+		stop_x = 336.0
 	bot.setup(kind, Vector2(SPAWN_X, LANE_Y), stop_x)
 	bot.exploded.connect(_on_popper_exploded)
 	bot.slammed.connect(_on_warden_slam)
@@ -202,13 +205,13 @@ func _tick_contacts() -> void:
 
 func _on_popper_exploded(bot: Enemy) -> void:
 	shake = 12.0
-	if volt.global_position.distance_to(bot.global_position) <= 200.0:
+	if volt.global_position.distance_to(bot.global_position) <= 260.0:
 		_hurt_volt()
 
 
 func _on_warden_slam(bot: Enemy) -> void:
 	shake = 10.0
-	if volt.global_position.distance_to(bot.global_position) <= 190.0:
+	if volt.global_position.distance_to(bot.global_position) <= 250.0:
 		_hurt_volt()
 
 

@@ -64,16 +64,18 @@ func _build() -> void:
 	fill.corner_radius_bottom_right = 8
 	_meter.add_theme_stylebox_override("background", bg)
 	_meter.add_theme_stylebox_override("fill", fill)
+	_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_meter)
 
 	_hearts = HBoxContainer.new()
 	_hearts.position = Vector2(24, 92)
 	_hearts.add_theme_constant_override("separation", 8)
+	_hearts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_hearts)
 	set_hp(3)
 
-	_hint = _label(Vector2(40, 1188), 20, Color(1, 1, 1, 0.72))
-	_hint.size = Vector2(640, 40)
+	_hint = _label(Vector2(40, 1168), 22, Color(0.92, 0.97, 1.0, 0.92))
+	_hint.size = Vector2(640, 48)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.text = "TAP to hit   ·   SWIPE to dodge"
 	root.add_child(_hint)
@@ -116,6 +118,7 @@ func set_hp(hp: int) -> void:
 		var pip := ColorRect.new()
 		pip.custom_minimum_size = Vector2(22, 22)
 		pip.color = Color(0.24, 0.94, 1.0) if i < hp else Color(0.18, 0.2, 0.28, 0.8)
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_hearts.add_child(pip)
 
 

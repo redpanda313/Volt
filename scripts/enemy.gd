@@ -39,20 +39,20 @@ func setup(p_kind: Kind, spawn: Vector2, p_stop_x: float) -> void:
 		Kind.SCOUT:
 			hp = 1
 			speed = 310.0
-			hit_size = Vector2(118, 200)
-			contact_range = 74.0
+			hit_size = Vector2(130, 210)
+			contact_range = 118.0
 			Art.fit_sprite(visual, Art.tex(Art.SCOUT_IDLE), 198.0, 0.46)
 		Kind.POPPER:
 			hp = 1
 			speed = 175.0
-			hit_size = Vector2(132, 186)
-			contact_range = 96.0
+			hit_size = Vector2(150, 200)
+			contact_range = 150.0
 			Art.fit_sprite(visual, Art.tex(Art.POPPER_IDLE), 186.0, 0.46)
 		Kind.WARDEN:
 			hp = 3
 			speed = 96.0
-			hit_size = Vector2(168, 236)
-			contact_range = 110.0
+			hit_size = Vector2(180, 250)
+			contact_range = 155.0
 			Art.fit_sprite(visual, Art.tex(Art.WARDEN_IDLE), 236.0, 0.46)
 	max_hp = hp
 	name = kind_name()
@@ -118,7 +118,7 @@ func _process(delta: float) -> void:
 					telegraph.visible = true
 	else:
 		if kind == Kind.SCOUT:
-			position.x = move_toward(position.x, stop_x - 80.0, speed * 0.35 * delta)
+			position.x = move_toward(position.x, stop_x - 40.0, speed * 0.55 * delta)
 		elif kind == Kind.POPPER:
 			_tick_popper(delta)
 		elif kind == Kind.WARDEN:

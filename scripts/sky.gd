@@ -18,12 +18,13 @@ func _ready() -> void:
 	_backdrop.name = "Backdrop"
 	_backdrop.size = Vector2(720, 1280)
 	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_backdrop.z_index = -2
 	var shader := load("res://shaders/sky.gdshader") as Shader
 	_material = ShaderMaterial.new()
 	_material.shader = shader
 	_backdrop.material = _material
 	add_child(_backdrop)
-	move_child(_backdrop, 0)
+	z_as_relative = true
 	_stars.clear()
 	for i in 70:
 		_stars.append({

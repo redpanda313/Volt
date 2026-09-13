@@ -14,10 +14,10 @@ func add_bot(texture: Texture2D, kind_scale: float) -> void:
 	sprite.centered = true
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	var th := float(texture.get_height())
-	var fit: float = (72.0 * kind_scale) / maxf(th, 1.0)
+	var fit: float = (120.0 * kind_scale) / maxf(th, 1.0)
 	sprite.scale = Vector2(fit, fit)
 	var count := get_child_count()
-	sprite.position = Vector2(randf_range(-34.0, 36.0), 18.0 + count * 16.0)
+	sprite.position = Vector2(randf_range(-40.0, 42.0), -6.0 + count * 12.0)
 	sprite.rotation = randf_range(-0.18, 0.18)
 	sprite.modulate = Color(0.62, 0.68, 0.82, 0.92)
 	sprite.z_index = -1
