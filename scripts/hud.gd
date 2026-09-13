@@ -108,7 +108,7 @@ func _build() -> void:
 	_hint.size = Vector2(648, 56)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint.text = "Tap bot  ·  Swipe L/R  ·  Swipe up"
+	_hint.text = "Tap bot  ·  Swipe any direction to dash"
 	root.add_child(_hint)
 
 	_toast = _label(Vector2(160, 248), 26, Color(1, 0.92, 0.45))
@@ -205,7 +205,7 @@ func _build_level_up() -> Control:
 	var wrap := _modal("LEVEL UP", "The pile hits a thermal. Pick a beat.")
 	var col := wrap.get_node("Panel/VBox") as VBoxContainer
 	col.add_child(_choice_button("Arc Lash", "Swings also clip a nearby bot.", "arc"))
-	col.add_child(_choice_button("Afterimage", "Longer dodge. More i-frames.", "dodge"))
+	col.add_child(_choice_button("Afterimage", "Longer dash. More i-frames.", "dodge"))
 	wrap.visible = false
 	return wrap
 

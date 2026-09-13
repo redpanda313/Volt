@@ -1,8 +1,15 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="1_enemy"]
 
-[node name="Enemy" type="Node2D"]
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_body"]
+radius = 16.0
+height = 68.0
+
+[node name="Enemy" type="CharacterBody2D"]
+collision_layer = 0
+collision_mask = 1
+floor_snap_length = 22.0
 script = ExtResource("1_enemy")
 
 [node name="Telegraph" type="Node2D" parent="."]
@@ -12,4 +19,8 @@ visible = false
 color = Color(1, 0.35, 0.28, 0.28)
 polygon = PackedVector2Array(-90, -10, -70, -50, -20, -78, 30, -78, 80, -46, 92, 0, 74, 40, 20, 58, -30, 54, -78, 24)
 
-[node name="Visual" type="Sprite2D" parent="."]
+[node name="Visual" type="AnimatedSprite2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -34)
+shape = SubResource("CapsuleShape2D_body")

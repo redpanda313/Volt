@@ -16,6 +16,7 @@ const ARENA_RIGHT := 712.0
 @onready var enemies: Node2D = $World/Enemies
 @onready var hud: HUD = $HUD
 @onready var gesture: Gesture = $Gesture
+@onready var juice: Juice = $Juice
 
 var _enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
 
@@ -26,7 +27,6 @@ var height_m: float = 0.0
 var kills: int = 0
 var leveled := false
 var spawn_in: float = 0.40
-var shake: float = 0.0
 var combo_left: float = 0.0
 var combo: int = 0
 var _ground: StaticBody2D
@@ -35,14 +35,14 @@ var _ground: StaticBody2D
 func _ready() -> void:
 	best = _load_best()
 	_build_arena()
+	juice.bind(camera, $World)
 	volt.global_position = Vector2(VOLT_X, pile.playable_y())
 	volt.rest_x = VOLT_X
 	volt.hp_changed.connect(hud.set_hp)
 	volt.died.connect(_on_volt_died)
 	volt.dashed.connect(_on_volt_dashed)
 	gesture.tapped.connect(_on_tapped)
-	gesture.swiped_horizontal.connect(_on_swiped_horizontal)
-	gesture.swiped_up.connect(_on_swiped_up)
+	gesture.swiped.connect(_on_swiped)
 	pile.layer_completed.connect(_on_layer_completed)
 	hud.restart_pressed.connect(_restart)
 	hud.upgrade_picked.connect(_on_upgrade)
@@ -92,7 +92,6 @@ func _add_wall(wall_name: String, pos: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	if state != State.PLAYING:
-		camera.offset = Vector2.ZERO
 		return
 	combo_left = maxf(0.0, combo_left - delta)
 	if combo_left <= 0.0:
@@ -102,11 +101,6 @@ func _process(delta: float) -> void:
 		_spawn_bot()
 		var pace := clampf(1.25 * pow(0.86, float(kills)), 0.70, 1.35)
 		spawn_in = pace
-	if shake > 0.0:
-		shake = maxf(0.0, shake - delta * 18.0)
-		camera.offset = Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
-	else:
-		camera.offset = Vector2.ZERO
 
 
 func _physics_process(delta: float) -> void:
@@ -138,11 +132,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_SPACE:
 			_launch_nearest()
 		KEY_A, KEY_LEFT:
-			_dodge(-1.0)
+			_dash(Vector2.LEFT)
 		KEY_D, KEY_RIGHT:
-			_dodge(1.0)
+			_dash(Vector2.RIGHT)
 		KEY_W, KEY_UP:
-			_jump()
+			_dash(Vector2.UP)
+		KEY_S, KEY_DOWN:
+			_dash(Vector2.DOWN)
 
 
 func _on_tapped(screen_pos: Vector2) -> void:
@@ -157,30 +153,21 @@ func _on_tapped(screen_pos: Vector2) -> void:
 	_launch_at(target)
 
 
-func _on_swiped_horizontal(direction: float) -> void:
+func _on_swiped(direction: Vector2) -> void:
 	if state != State.PLAYING:
 		return
-	_dodge(direction)
+	_dash(direction)
 
 
-func _on_swiped_up() -> void:
-	if state != State.PLAYING:
-		return
-	_jump()
-
-
-func _dodge(direction: float) -> void:
-	volt.apply_dodge(direction)
-	hud.toast("DODGE")
-
-
-func _jump() -> void:
-	if volt.apply_jump():
-		hud.toast("JUMP")
+func _dash(direction: Vector2) -> void:
+	volt.apply_dash(direction)
+	juice.dash_whoosh()
+	juice.ghost(volt.visual)
+	hud.toast("DASH")
 
 
 func _on_volt_dashed(direction: Vector2) -> void:
-	if volt.is_on_floor():
+	if volt.is_on_floor() or absf(volt.global_position.y - pile.playable_y()) < 48.0:
 		pile.knock_top_layer(volt.global_position, direction)
 
 
@@ -222,7 +209,8 @@ func _strike_on_contact(primary: Enemy) -> void:
 
 func _hit_enemy(enemy: Enemy) -> void:
 	var slain := enemy.hurt(1)
-	shake = maxf(shake, 7.0)
+	var chest := enemy.global_position + Vector2(0.0, -enemy.hit_size.y * 0.35)
+	juice.attack_punch(chest)
 	if slain:
 		_on_kill(enemy)
 
@@ -238,6 +226,7 @@ func _on_kill(enemy: Enemy) -> void:
 	hud.set_score(score)
 	hud.set_height(height_m)
 	pile.shatter(enemy)
+	juice.kill_burst(enemy.global_position + Vector2(0, -80))
 	_float_pts(enemy.global_position + Vector2(0, -120), "+%d" % gain)
 	if not leveled and kills >= LEVEL_UP_KILLS:
 		_offer_level_up()
@@ -249,7 +238,7 @@ func _on_layer_completed(layer_index: int, playable_y: float) -> void:
 	hud.set_height(height_m)
 	hud.set_climb_level(1 + layer_index)
 	hud.toast("LAYER UP")
-	shake = maxf(shake, 9.0)
+	juice.layer_thump()
 	if is_instance_valid(_ground):
 		_ground.position.y = playable_y + 40.0
 	if volt.global_position.y > playable_y:
@@ -269,7 +258,7 @@ func _spawn_bot() -> void:
 		stop_x = 348.0 + randf_range(-8.0, 16.0)
 	if kind == Enemy.Kind.WARDEN:
 		stop_x = 336.0
-	var lane_y := pile.playable_y()
+	var lane_y := pile.surface_y_at(SPAWN_X)
 	bot.setup(kind, Vector2(SPAWN_X, lane_y), stop_x)
 	bot.exploded.connect(_on_popper_exploded)
 	bot.slammed.connect(_on_warden_slam)
@@ -297,32 +286,34 @@ func _tick_contacts() -> void:
 			if volt.is_launching():
 				continue
 			bot.mark_contact()
-			_hurt_volt()
+			_hurt_volt(bot)
 
 
 func _on_popper_exploded(bot: Enemy) -> void:
-	shake = 12.0
+	juice.explode_burst(bot.global_position + Vector2(0, -40))
 	if volt.global_position.distance_to(bot.global_position) <= 260.0:
-		_hurt_volt()
+		_hurt_volt(bot)
 
 
 func _on_warden_slam(bot: Enemy) -> void:
-	shake = 10.0
+	juice.slam_burst(bot.global_position + Vector2(0, -20))
 	if volt.global_position.distance_to(bot.global_position) <= 250.0:
-		_hurt_volt()
+		_hurt_volt(bot)
 
 
-func _hurt_volt() -> void:
+func _hurt_volt(bot: Enemy) -> void:
 	if volt.is_invulnerable():
 		return
+	volt.apply_knockback(bot.global_position, bot.knock_speed, bot.knock_lift)
 	volt.take_hit()
-	shake = 14.0
+	juice.damage_pulse()
 	hud.toast("HIT")
 
 
 func _offer_level_up() -> void:
 	leveled = true
 	state = State.LEVEL_UP
+	Engine.time_scale = 1.0
 	get_tree().paused = true
 	hud.show_level_up()
 
@@ -341,6 +332,7 @@ func _on_upgrade(id: String) -> void:
 
 func _on_volt_died() -> void:
 	state = State.GAME_OVER
+	Engine.time_scale = 1.0
 	if score > best:
 		best = score
 		_save_best(best)
@@ -348,6 +340,7 @@ func _on_volt_died() -> void:
 
 
 func _restart() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 
@@ -425,12 +418,17 @@ func _run_demo() -> void:
 		await _shot("02_launch_attack")
 		await get_tree().create_timer(0.70).timeout
 		await _shot("03_bounce_debris")
-	_dodge(-1.0)
-	await get_tree().create_timer(0.2).timeout
-	await _shot("04_dodge_knock")
-	_jump()
+	_dash(Vector2(-0.85, -0.45))
 	await get_tree().create_timer(0.22).timeout
-	await _shot("05_jump")
+	await _shot("04_omni_dash")
+	if bot and is_instance_valid(bot) and not bot.dead:
+		_hurt_volt(bot)
+		await get_tree().create_timer(0.16).timeout
+		await _shot("05_knockback_pulse")
+	else:
+		_dash(Vector2(0.2, -1.0))
+		await get_tree().create_timer(0.20).timeout
+		await _shot("05_dash_up")
 	if OS.get_environment("VOLT_DEMO_QUIT") == "1":
 		await get_tree().create_timer(0.35).timeout
 		get_tree().quit()
@@ -450,4 +448,3 @@ func _shot(slug: String) -> void:
 		dir = "/opt/cursor/artifacts/screenshots"
 	DirAccess.make_dir_recursive_absolute(dir)
 	img.save_png("%s/%s.png" % [dir, slug])
-

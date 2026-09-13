@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/sky.gd" id="2_sky"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/volt.tscn" id="4_volt"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="5_hud"]
 [ext_resource type="Script" path="res://scripts/gesture.gd" id="6_gesture"]
+[ext_resource type="Script" path="res://scripts/fx.gd" id="7_juice"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -31,3 +32,6 @@ script = ExtResource("5_hud")
 
 [node name="Gesture" type="Node" parent="."]
 script = ExtResource("6_gesture")
+
+[node name="Juice" type="CanvasLayer" parent="."]
+script = ExtResource("7_juice")

@@ -5,8 +5,8 @@ config_version=5
 [application]
 
 config/name="Volt"
-config/description="Portrait 9:16 side-view climb. Swipe to move/jump, tap a bot to launch. Godot 2D only."
-config/version="0.2.0"
+config/description="Portrait 9:16 side-view climb. Swipe any direction to dash, tap a bot to launch. Godot 2D only."
+config/version="0.3.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 boot_splash/bg_color=Color(0.027451, 0.0313726, 0.0784314, 1)
