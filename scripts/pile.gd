@@ -14,8 +14,27 @@ var completed_layers: int = 0
 var _pieces: Array[DebrisPiece] = []
 
 
+func _ready() -> void:
+	add_to_group("pile")
+
+
 func playable_y() -> float:
 	return BASE_FLOOR - float(completed_layers) * LAYER_HEIGHT
+
+
+func surface_y_at(x: float, search_radius: float = 52.0) -> float:
+	var y := playable_y()
+	for piece in _pieces:
+		if piece == null or not is_instance_valid(piece):
+			continue
+		if not piece.settled and not piece.solid:
+			continue
+		if absf(piece.global_position.x - x) > search_radius:
+			continue
+		var top := piece.global_position.y - 18.0
+		if top < y:
+			y = top
+	return y
 
 
 func shatter(enemy: Enemy) -> void:

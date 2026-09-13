@@ -1,10 +1,10 @@
 # Volt
 
-Portrait **9:16** side-view climb. You are **Volt**. Swipe to move and jump. Tap a bot to launch. Robots break apart, pile up, and the fight lifts toward space. High score.
+Portrait **9:16** side-view climb. You are **Volt**. Swipe any direction to dash. Tap a bot to launch. Robots break apart, pile up, and the fight lifts toward space. High score.
 
 **This repo is Godot 4.x 2D only. There is no Unity project, no Narcalid, no Steam target.**
 
-Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-1 combat sprites + night-2 idle / debris / HUD), score + height meter, one mid-run level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
+Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-3 loops when present, night-2 idle / debris / HUD, night-1 fallbacks), score + height meter, one mid-run level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
 
 ## Play (no Godot install)
 
@@ -15,10 +15,9 @@ After GitHub Pages is enabled (see below), the jam build is:
 Controls work in the browser:
 
 - **Tap / click an enemy** — Volt launches at that bot, attacks on contact, then bounces up and back. Tap again to chain.
-- **Swipe left / right** — physics dodge / move. A ground dash knocks loose pile pieces.
-- **Swipe up** — physics jump.
+- **Swipe any direction** — dash that way (longer than beat 2). A ground dash knocks loose pile pieces.
 
-On a keyboard: `A`/`D` or arrows move, `W` or up-arrow jump, `Space` launch at the nearest bot, `R` restart after death. No joystick. No on-screen ATTACK button.
+On a keyboard: `A`/`D`/`W`/`S` or arrows dash, `Space` launch at the nearest bot, `R` restart after death. No joystick. No on-screen ATTACK button.
 
 ## Open in the Godot Editor
 
@@ -31,14 +30,15 @@ Node names are sprite-swap ready:
 
 | Node | Art |
 | --- | --- |
-| `World/Volt/Visual/Idle` | `art/night2/slices/volt_idle/volt_idle_01.png` … `_04.png` (loop 01→02→03→04→01) |
-| `World/Volt/Visual/Attack` | `art/night1/slices/volt_attack.png` |
-| `World/Volt/Visual/Dodge` | `art/night1/slices/volt_dodge.png` |
-| Enemy `Visual` | `scout_idle.png` / `popper_idle.png` / `warden_idle.png` |
+| `World/Volt/Visual/Idle` | night3 `art/night3/slices/volt/idle/idle_01`…`_06` (fallback night-2 `volt_idle_01`…`_04`) |
+| `World/Volt/Visual/Attack` | night3 `volt/attack/attack_01`…`_06` (fallback night-1 `volt_attack.png`) |
+| `World/Volt/Visual/Dash` | night3 `volt/dash/dash_01`…`_06` (fallback night-1 `volt_dodge.png`) |
+| `World/Volt/Visual/Hurt` | night3 `volt/knockback/knockback_01`…`_06` (fallback night-1 dodge) |
+| Enemy `Visual` | night3 `bots/scout/scout_walk_01`…`_04`, `popper_hop_01`…`_04`, `warden_walk_01`…`_04` |
 | Debris | `art/night2/slices/debris/{scout,popper,warden}/*_chunk_XX.png` |
 | HUD `ChromeTop` / `ChromeMeter` | `art/night2/hud/hud_top.png`, `hud_meter.png` (from the night-2 portrait / sheet) |
 
-Drop replacement PNGs on those paths to reskin. Sheets and chroma-key notes live in `art/night1/` and `art/night2/`.
+Drop replacement PNGs on those paths to reskin. Expected night-3 layout is in `art/night3/README.md`. Sheets live in `art/night1/`, `art/night2/`, `art/night3/sheets/`.
 
 ## Export HTML5 (local)
 
@@ -80,14 +80,16 @@ Local alternative: export to `export/web/`, then upload that folder to any stati
 
 See **[PLAYTEST.md](PLAYTEST.md)** for the click-through against Pete’s notes, the Pages URL, and the Godot open path.
 
-## Changelog vs first playable
+## Changelog vs beat 2
 
-- Volt and Scout / Popper / Warden are ~10% smaller.
-- Volt idle uses the night-2 4-frame loop (`01→02→03→04→01`). Night-1 `volt_idle` is the fallback if those frames are missing.
-- Controls: swipe L/R is a physics dodge/move (Volt stays where he slides). Swipe up is a physics jump. Tap a bot launches Volt; the hit lands on contact with a small bounce up+back. Repeat taps chain launches.
-- Kills shatter that bot into night-2 debris chunks that pile on the ground. The top incomplete layer is knockable with a ground dash. A full layer welds (no longer moves) and raises the playable floor.
-- HUD uses night-2 chrome (`hud_top`, `hud_meter`) with live 8-digit score, climb level, altitude band, and HP pips. Named `ChromeTop` / `ChromeMeter` / `ScoreLabel` / `LevelLabel` hooks stay ready for a later art swap. No joystick or ATTACK button.
-- Score and height still drive the run. Scout / Popper / Warden only. Portrait 9:16. HTML5 Pages path unchanged (single-thread Web export).
+- Actors shrink ~10% again (`Art.ACTOR_SCALE` 0.90 → **0.81**).
+- Swipe is an **omni dash** (any direction, longer travel). Swipe-up jump is gone; up-swipe dashes up.
+- Scout / Popper / Warden walk on the rising pile as `CharacterBody2D`s: Scout faster, Popper hoppier, Warden heavier/slower.
+- Enemy hits apply **per-type knockback** to Volt (Scout jab, Popper blast, Warden shove).
+- Night-3 `SpriteFrames` for Volt idle / attack / dash / hurt and bot walk / hop. Missing files fall back to night-2 / night-1 so the loop still runs.
+- AAA juice: attack shake + hitstop + VFX rings/bursts, damage screen pulse, punchy procedural SFX.
+- Debris pile / solidify / raise playable height is unchanged on purpose.
+- HTML5 Pages path unchanged (single-thread Web export).
 
 ## iOS / Android (later)
 

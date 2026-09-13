@@ -2,14 +2,12 @@ extends Node
 class_name Gesture
 
 ## Tap vs swipe. Mouse and touch both work (web + editor + phones).
-## Swipe L/R = move. Swipe up = jump. No joystick / attack button.
+## Swipe any direction = dash. Tap a bot = launch. No joystick / attack button.
 
 signal tapped(screen_pos: Vector2)
-signal swiped_horizontal(direction: float)
-signal swiped_up
+signal swiped(direction: Vector2)
 
 const SWIPE_PX := 56.0
-const UP_BIAS := 0.82
 
 var _pressing := false
 var _origin := Vector2.ZERO
@@ -72,10 +70,9 @@ func _emit_swipe(pos: Vector2) -> void:
 	if not _debounce():
 		return
 	var delta := pos - _origin
-	if delta.y < 0.0 and absf(delta.y) >= absf(delta.x) * UP_BIAS:
-		swiped_up.emit()
-	else:
-		swiped_horizontal.emit(1.0 if delta.x >= 0.0 else -1.0)
+	if delta.length() < 0.1:
+		return
+	swiped.emit(delta.normalized())
 
 
 func _debounce() -> bool:
