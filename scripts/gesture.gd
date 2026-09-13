@@ -1,0 +1,66 @@
+extends Node
+class_name Gesture
+
+## Tap vs swipe. Mouse and touch both work (web + editor + phones).
+
+signal tapped(screen_pos: Vector2)
+signal swiped(direction: Vector2)
+
+const SWIPE_PX := 56.0
+
+var _pressing := false
+var _origin := Vector2.ZERO
+var _did_swipe := false
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			_begin(touch.position)
+		else:
+			_end(touch.position)
+	elif event is InputEventScreenDrag:
+		_drag((event as InputEventScreenDrag).position)
+	elif event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		if mouse.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mouse.pressed:
+			_begin(mouse.position)
+		else:
+			_end(mouse.position)
+	elif event is InputEventMouseMotion and _pressing:
+		_drag((event as InputEventMouseMotion).position)
+
+
+func _begin(pos: Vector2) -> void:
+	_pressing = true
+	_origin = pos
+	_did_swipe = false
+
+
+func _drag(pos: Vector2) -> void:
+	if not _pressing or _did_swipe:
+		return
+	var delta := pos - _origin
+	if delta.length() >= SWIPE_PX:
+		_did_swipe = true
+		swiped.emit(delta.normalized())
+
+
+func _end(pos: Vector2) -> void:
+	if not _pressing:
+		return
+	_pressing = false
+	if _did_swipe:
+		return
+	var delta := pos - _origin
+	if delta.length() >= SWIPE_PX:
+		swiped.emit(delta.normalized())
+	else:
+		tapped.emit(pos)

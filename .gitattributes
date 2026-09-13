@@ -1,0 +1,7 @@
+# Godot 4 text scenes / resources stay reviewable.
+*.tscn text
+*.tres text
+*.gd text
+*.gdshader text
+*.cfg text
+*.godot text

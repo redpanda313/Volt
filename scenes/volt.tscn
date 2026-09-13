@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/volt.gd" id="1_volt"]
+
+[node name="Volt" type="Node2D"]
+script = ExtResource("1_volt")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Idle" type="Sprite2D" parent="Visual"]
+
+[node name="Attack" type="Sprite2D" parent="Visual"]
+visible = false
+
+[node name="Dodge" type="Sprite2D" parent="Visual"]
+visible = false

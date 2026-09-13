@@ -1,0 +1,15 @@
+.godot/
+*.translation
+export/android/
+export/ios/
+export/web/*
+!export/web/.gitkeep
+!export/web/README.md
+.import/
+*.apk
+*.aab
+*.ipa
+*.xcarchive
+*.keystore
+*.jks
+.DS_Store
