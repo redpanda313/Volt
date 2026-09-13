@@ -21,8 +21,8 @@ var hp: int = 1
 var max_hp: int = 1
 var speed: float = 280.0
 var stop_x: float = 430.0
-var hit_size: Vector2 = Vector2(120, 210)
-var contact_range: float = 78.0
+var hit_size: Vector2 = Vector2(108, 190)
+var contact_range: float = 70.0
 var contact_cd: float = 0.0
 var fuse: float = -1.0
 var slam_cd: float = 1.4
@@ -35,25 +35,26 @@ func setup(p_kind: Kind, spawn: Vector2, p_stop_x: float) -> void:
 	kind = p_kind
 	position = spawn
 	stop_x = p_stop_x
+	var s := Art.ACTOR_SCALE
 	match kind:
 		Kind.SCOUT:
 			hp = 1
 			speed = 310.0
-			hit_size = Vector2(130, 210)
-			contact_range = 118.0
-			Art.fit_sprite(visual, Art.tex(Art.SCOUT_IDLE), 198.0, 0.46)
+			hit_size = Vector2(117, 189)
+			contact_range = 106.0
+			Art.fit_sprite(visual, Art.tex(Art.SCOUT_IDLE), 198.0 * s, 0.46)
 		Kind.POPPER:
 			hp = 1
 			speed = 175.0
-			hit_size = Vector2(150, 200)
-			contact_range = 150.0
-			Art.fit_sprite(visual, Art.tex(Art.POPPER_IDLE), 186.0, 0.46)
+			hit_size = Vector2(135, 180)
+			contact_range = 135.0
+			Art.fit_sprite(visual, Art.tex(Art.POPPER_IDLE), 186.0 * s, 0.46)
 		Kind.WARDEN:
 			hp = 3
 			speed = 96.0
-			hit_size = Vector2(180, 250)
-			contact_range = 155.0
-			Art.fit_sprite(visual, Art.tex(Art.WARDEN_IDLE), 236.0, 0.46)
+			hit_size = Vector2(162, 225)
+			contact_range = 140.0
+			Art.fit_sprite(visual, Art.tex(Art.WARDEN_IDLE), 236.0 * s, 0.46)
 	max_hp = hp
 	name = kind_name()
 	if telegraph:

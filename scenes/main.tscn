@@ -19,11 +19,10 @@ position = Vector2(360, 640)
 script = ExtResource("2_sky")
 
 [node name="Pile" type="Node2D" parent="World"]
-position = Vector2(230, 980)
 script = ExtResource("3_pile")
 
 [node name="Volt" parent="World" instance=ExtResource("4_volt")]
-position = Vector2(230, 900)
+position = Vector2(230, 1000)
 
 [node name="Enemies" type="Node2D" parent="World"]
 

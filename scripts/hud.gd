@@ -1,10 +1,15 @@
 extends CanvasLayer
 class_name HUD
 
+## Night-2 chrome hooks. Swap ChromeTop / ChromeMeter textures when Sable slices again.
+## Sources: art/night2/hud/hud_top.png, hud_meter.png, hud_portrait_9x16.png, hud_elements_sheet.png
+## No joystick. No ATTACK button.
+
 signal restart_pressed
 signal upgrade_picked(id: String)
 
 var _score: Label
+var _level: Label
 var _height: Label
 var _meter: ProgressBar
 var _hearts: HBoxContainer
@@ -13,6 +18,8 @@ var _toast: Label
 var _level_up: Control
 var _game_over: Control
 var _over_body: Label
+var _chrome_top: TextureRect
+var _chrome_meter: TextureRect
 var _best := 0
 
 
@@ -28,59 +35,87 @@ func _build() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	_score = _label(Vector2(28, 22), 34, Color(0.95, 0.97, 1.0))
-	_score.text = "0"
+	_chrome_top = TextureRect.new()
+	_chrome_top.name = "ChromeTop"
+	_chrome_top.texture = Art.hud_tex(Art.HUD_TOP)
+	_chrome_top.position = Vector2(16, 12)
+	_chrome_top.size = Vector2(688, 92)
+	_chrome_top.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_chrome_top.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_chrome_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_chrome_top)
+
+	_chrome_meter = TextureRect.new()
+	_chrome_meter.name = "ChromeMeter"
+	_chrome_meter.texture = Art.hud_tex(Art.HUD_METER)
+	_chrome_meter.position = Vector2(6, 118)
+	_chrome_meter.size = Vector2(156, 250)
+	_chrome_meter.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_chrome_meter.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	_chrome_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_chrome_meter)
+
+	_score = _label(Vector2(48, 28), 40, Color(0.96, 0.98, 1.0))
+	_score.name = "ScoreLabel"
+	_score.size = Vector2(360, 52)
+	_score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_score.add_theme_color_override("font_outline_color", Color(0.04, 0.07, 0.14, 0.9))
+	_score.add_theme_constant_override("outline_size", 6)
 	root.add_child(_score)
 
-	var title := _label(Vector2(28, 62), 16, Color(0.24, 0.94, 1.0, 0.85))
-	title.text = "VOLT"
-	root.add_child(title)
+	_level = _label(Vector2(548, 34), 30, Color(0.95, 0.98, 1.0))
+	_level.name = "LevelLabel"
+	_level.size = Vector2(88, 44)
+	_level.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_level.add_theme_color_override("font_outline_color", Color(0.04, 0.07, 0.14, 0.9))
+	_level.add_theme_constant_override("outline_size", 5)
+	root.add_child(_level)
 
-	_height = _label(Vector2(520, 28), 18, Color(0.78, 0.86, 1.0, 0.9))
-	_height.size = Vector2(170, 28)
-	_height.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_height.text = "0 m"
+	_height = _label(Vector2(168, 108), 16, Color(0.55, 0.86, 1.0, 0.95))
+	_height.name = "HeightLabel"
+	_height.size = Vector2(200, 24)
+	_height.text = "0 m  ·  GROUND"
 	root.add_child(_height)
 
 	_meter = ProgressBar.new()
-	_meter.position = Vector2(676, 120)
-	_meter.size = Vector2(18, 720)
+	_meter.name = "HeightFill"
+	_meter.position = Vector2(24, 168)
+	_meter.size = Vector2(18, 148)
 	_meter.min_value = 0
 	_meter.max_value = 400
 	_meter.value = 0
 	_meter.show_percentage = false
 	_meter.fill_mode = ProgressBar.FILL_BOTTOM_TO_TOP
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.08, 0.09, 0.16, 0.7)
-	bg.corner_radius_top_left = 8
-	bg.corner_radius_top_right = 8
-	bg.corner_radius_bottom_left = 8
-	bg.corner_radius_bottom_right = 8
+	bg.bg_color = Color(0.06, 0.08, 0.16, 0.0)
 	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color(0.24, 0.94, 1.0, 0.85)
-	fill.corner_radius_top_left = 8
-	fill.corner_radius_top_right = 8
-	fill.corner_radius_bottom_left = 8
-	fill.corner_radius_bottom_right = 8
+	fill.bg_color = Color(0.28, 0.62, 1.0, 0.55)
+	fill.corner_radius_top_left = 6
+	fill.corner_radius_top_right = 6
+	fill.corner_radius_bottom_left = 6
+	fill.corner_radius_bottom_right = 6
 	_meter.add_theme_stylebox_override("background", bg)
 	_meter.add_theme_stylebox_override("fill", fill)
 	_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_meter)
 
 	_hearts = HBoxContainer.new()
-	_hearts.position = Vector2(24, 92)
-	_hearts.add_theme_constant_override("separation", 8)
+	_hearts.name = "Hearts"
+	_hearts.position = Vector2(400, 108)
+	_hearts.add_theme_constant_override("separation", 7)
 	_hearts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_hearts)
 	set_hp(3)
 
-	_hint = _label(Vector2(40, 1168), 22, Color(0.92, 0.97, 1.0, 0.92))
+	_hint = _label(Vector2(40, 1168), 20, Color(0.92, 0.97, 1.0, 0.92))
+	_hint.name = "Hint"
 	_hint.size = Vector2(640, 48)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint.text = "TAP to hit   ·   SWIPE to dodge"
+	_hint.text = "TAP enemy to launch   ·   SWIPE move   ·   SWIPE UP jump"
 	root.add_child(_hint)
 
 	_toast = _label(Vector2(80, 240), 28, Color(1, 0.92, 0.45))
+	_toast.name = "Toast"
 	_toast.size = Vector2(560, 40)
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.text = ""
@@ -91,6 +126,9 @@ func _build() -> void:
 
 	_game_over = _build_game_over()
 	root.add_child(_game_over)
+
+	set_score(0)
+	set_climb_level(1)
 
 
 func _label(pos: Vector2, size: int, color: Color) -> Label:
@@ -103,11 +141,24 @@ func _label(pos: Vector2, size: int, color: Color) -> Label:
 
 
 func set_score(value: int) -> void:
-	_score.text = str(value)
+	_score.text = "%08d" % value
+
+
+func set_climb_level(level: int) -> void:
+	_level.text = "%02d" % clampi(level, 1, 99)
 
 
 func set_height(meters: float) -> void:
-	_height.text = "%d m" % int(meters)
+	var band := "GROUND"
+	if meters >= 280.0:
+		band = "SPACE"
+	elif meters >= 200.0:
+		band = "ORBIT"
+	elif meters >= 120.0:
+		band = "SKY"
+	elif meters >= 50.0:
+		band = "PEAK"
+	_height.text = "%d m  ·  %s" % [int(meters), band]
 	_meter.value = meters
 
 
@@ -116,8 +167,8 @@ func set_hp(hp: int) -> void:
 		child.queue_free()
 	for i in 3:
 		var pip := ColorRect.new()
-		pip.custom_minimum_size = Vector2(22, 22)
-		pip.color = Color(0.24, 0.94, 1.0) if i < hp else Color(0.18, 0.2, 0.28, 0.8)
+		pip.custom_minimum_size = Vector2(18, 18)
+		pip.color = Color(0.24, 0.94, 1.0) if i < hp else Color(0.18, 0.2, 0.28, 0.55)
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_hearts.add_child(pip)
 
@@ -126,7 +177,7 @@ func fade_hint() -> void:
 	if _hint == null:
 		return
 	var tween := create_tween()
-	tween.tween_property(_hint, "modulate:a", 0.0, 0.6).set_delay(5.5)
+	tween.tween_property(_hint, "modulate:a", 0.0, 0.6).set_delay(6.5)
 
 
 func toast(text: String) -> void:

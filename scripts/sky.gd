@@ -16,7 +16,8 @@ func _ready() -> void:
 	_rng.seed = 13
 	_backdrop = ColorRect.new()
 	_backdrop.name = "Backdrop"
-	_backdrop.size = Vector2(720, 1280)
+	_backdrop.size = Vector2(720, 3600)
+	_backdrop.position = Vector2(0, -2200)
 	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_backdrop.z_index = -2
 	var shader := load("res://shaders/sky.gdshader") as Shader
@@ -28,7 +29,7 @@ func _ready() -> void:
 	_stars.clear()
 	for i in 70:
 		_stars.append({
-			"pos": Vector2(_rng.randf_range(10.0, 710.0), _rng.randf_range(20.0, 900.0)),
+			"pos": Vector2(_rng.randf_range(10.0, 710.0), _rng.randf_range(-1800.0, 900.0)),
 			"size": _rng.randf_range(1.1, 2.6),
 			"tw": _rng.randf_range(0.0, TAU),
 		})

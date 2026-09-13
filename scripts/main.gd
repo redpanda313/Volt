@@ -4,10 +4,10 @@ enum State { PLAYING, LEVEL_UP, GAME_OVER }
 
 const LEVEL_UP_KILLS := 5
 const VOLT_X := 230.0
-const VOLT_Y := 900.0
 const SPAWN_X := 820.0
-const LANE_Y := 900.0
 const SAVE_PATH := "user://volt.cfg"
+const ARENA_LEFT := 8.0
+const ARENA_RIGHT := 712.0
 
 @onready var camera: Camera2D = $Camera2D
 @onready var sky: ClimbSky = $World/Sky
@@ -29,24 +29,63 @@ var spawn_in: float = 0.40
 var shake: float = 0.0
 var combo_left: float = 0.0
 var combo: int = 0
+var _ground: StaticBody2D
 
 
 func _ready() -> void:
 	best = _load_best()
-	volt.position = Vector2(VOLT_X, VOLT_Y)
+	_build_arena()
+	volt.global_position = Vector2(VOLT_X, pile.playable_y())
 	volt.rest_x = VOLT_X
 	volt.hp_changed.connect(hud.set_hp)
 	volt.died.connect(_on_volt_died)
+	volt.dashed.connect(_on_volt_dashed)
 	gesture.tapped.connect(_on_tapped)
-	gesture.swiped.connect(_on_swiped)
+	gesture.swiped_horizontal.connect(_on_swiped_horizontal)
+	gesture.swiped_up.connect(_on_swiped_up)
+	pile.layer_completed.connect(_on_layer_completed)
 	hud.restart_pressed.connect(_restart)
 	hud.upgrade_picked.connect(_on_upgrade)
 	hud.set_score(0)
 	hud.set_height(0.0)
 	hud.set_hp(volt.hp)
+	hud.set_climb_level(1)
 	hud.fade_hint()
 	camera.position = Vector2(360, 640)
 	volt.invuln = 0.75
+
+
+func _build_arena() -> void:
+	pile.position = Vector2.ZERO
+	_ground = StaticBody2D.new()
+	_ground.name = "Ground"
+	_ground.collision_layer = 0
+	_ground.collision_mask = 0
+	_ground.set_collision_layer_value(1, true)
+	_ground.position = Vector2(360, RobotPile.BASE_FLOOR + 40.0)
+	var gshape := CollisionShape2D.new()
+	var grect := RectangleShape2D.new()
+	grect.size = Vector2(2000, 80)
+	gshape.shape = grect
+	_ground.add_child(gshape)
+	$World.add_child(_ground)
+	_add_wall("LeftWall", Vector2(ARENA_LEFT - 20.0, 0.0))
+	_add_wall("RightWall", Vector2(ARENA_RIGHT + 20.0, 0.0))
+
+
+func _add_wall(wall_name: String, pos: Vector2) -> void:
+	var wall := StaticBody2D.new()
+	wall.name = wall_name
+	wall.collision_layer = 0
+	wall.collision_mask = 0
+	wall.set_collision_layer_value(1, true)
+	wall.position = pos
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(40, 6000)
+	shape.shape = rect
+	wall.add_child(shape)
+	$World.add_child(wall)
 
 
 func _process(delta: float) -> void:
@@ -61,12 +100,25 @@ func _process(delta: float) -> void:
 		_spawn_bot()
 		var pace := clampf(1.25 * pow(0.86, float(kills)), 0.70, 1.35)
 		spawn_in = pace
-	_tick_contacts()
 	if shake > 0.0:
 		shake = maxf(0.0, shake - delta * 18.0)
 		camera.offset = Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
 	else:
 		camera.offset = Vector2.ZERO
+
+
+func _physics_process(delta: float) -> void:
+	if state != State.PLAYING:
+		return
+	_tick_launch_hits()
+	_tick_contacts()
+	_follow_camera(delta)
+
+
+func _follow_camera(delta: float) -> void:
+	var focus_y := minf(volt.global_position.y - 360.0, pile.playable_y() - 360.0)
+	var target := Vector2(360.0, clampf(focus_y, -1800.0, 640.0))
+	camera.position = camera.position.lerp(target, clampf(8.0 * delta, 0.0, 1.0))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -82,11 +134,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	match key.physical_keycode:
 		KEY_SPACE:
-			_attack_nearest()
+			_launch_nearest()
 		KEY_A, KEY_LEFT:
-			_dodge(Vector2.LEFT)
+			_dodge(-1.0)
 		KEY_D, KEY_RIGHT:
-			_dodge(Vector2.RIGHT)
+			_dodge(1.0)
+		KEY_W, KEY_UP:
+			_jump()
 
 
 func _on_tapped(screen_pos: Vector2) -> void:
@@ -95,35 +149,65 @@ func _on_tapped(screen_pos: Vector2) -> void:
 	var world := _screen_to_world(screen_pos)
 	var target := _enemy_at(world)
 	if target == null:
-		target = _nearest_enemy(world, 160.0)
-	if target == null:
-		target = _nearest_enemy(volt.global_position + Vector2(170, -20), 560.0)
+		target = _nearest_enemy(world, 90.0)
 	if target == null:
 		return
-	_strike(target)
+	_launch_at(target)
 
 
-func _on_swiped(direction: Vector2) -> void:
+func _on_swiped_horizontal(direction: float) -> void:
 	if state != State.PLAYING:
 		return
 	_dodge(direction)
 
 
-func _dodge(direction: Vector2) -> void:
-	if direction == Vector2.ZERO:
-		direction = Vector2.RIGHT
-	volt.play_dodge(direction)
+func _on_swiped_up() -> void:
+	if state != State.PLAYING:
+		return
+	_jump()
+
+
+func _dodge(direction: float) -> void:
+	volt.apply_dodge(direction)
 	hud.toast("DODGE")
 
 
-func _attack_nearest() -> void:
+func _jump() -> void:
+	if volt.apply_jump():
+		hud.toast("JUMP")
+
+
+func _on_volt_dashed(direction: Vector2) -> void:
+	if volt.is_on_floor():
+		pile.knock_top_layer(volt.global_position, direction)
+
+
+func _launch_nearest() -> void:
 	var target := _nearest_enemy(volt.global_position + Vector2(140, -40), 420.0)
 	if target:
-		_strike(target)
+		_launch_at(target)
 
 
-func _strike(primary: Enemy) -> void:
-	volt.play_attack(primary.global_position)
+func _launch_at(target: Enemy) -> void:
+	var chest := target.global_position + Vector2(0.0, -target.hit_size.y * 0.4)
+	volt.launch_at(chest)
+	hud.toast("LAUNCH")
+
+
+func _tick_launch_hits() -> void:
+	if not volt.is_launching():
+		return
+	for child in enemies.get_children():
+		var bot := child as Enemy
+		if bot == null or bot.dead:
+			continue
+		if volt.strikes(bot):
+			_strike_on_contact(bot)
+			return
+
+
+func _strike_on_contact(primary: Enemy) -> void:
+	volt.bounce_from(primary.global_position)
 	_hit_enemy(primary)
 	if volt.arc_lash:
 		for child in enemies.get_children():
@@ -151,19 +235,27 @@ func _on_kill(enemy: Enemy) -> void:
 	sky.height_t = clampf(height_m / 360.0, 0.0, 1.0)
 	hud.set_score(score)
 	hud.set_height(height_m)
-	var slice := Art.SCOUT_IDLE
-	var pile_scale := 0.85
-	match enemy.kind:
-		Enemy.Kind.POPPER:
-			slice = Art.POPPER_IDLE
-			pile_scale = 0.95
-		Enemy.Kind.WARDEN:
-			slice = Art.WARDEN_IDLE
-			pile_scale = 1.15
-	pile.add_bot(Art.tex(slice), pile_scale)
+	pile.shatter(enemy)
 	_float_pts(enemy.global_position + Vector2(0, -120), "+%d" % gain)
 	if not leveled and kills >= LEVEL_UP_KILLS:
 		_offer_level_up()
+
+
+func _on_layer_completed(layer_index: int, playable_y: float) -> void:
+	height_m += 18.0
+	sky.height_t = clampf(height_m / 360.0, 0.0, 1.0)
+	hud.set_height(height_m)
+	hud.set_climb_level(1 + layer_index)
+	hud.toast("LAYER UP")
+	shake = maxf(shake, 9.0)
+	if is_instance_valid(_ground):
+		_ground.position.y = playable_y + 40.0
+	if volt.global_position.y > playable_y:
+		volt.global_position.y = playable_y
+	for child in enemies.get_children():
+		var bot := child as Enemy
+		if bot and not bot.dead:
+			bot.global_position.y = playable_y
 
 
 func _spawn_bot() -> void:
@@ -175,7 +267,8 @@ func _spawn_bot() -> void:
 		stop_x = 348.0 + randf_range(-8.0, 16.0)
 	if kind == Enemy.Kind.WARDEN:
 		stop_x = 336.0
-	bot.setup(kind, Vector2(SPAWN_X, LANE_Y), stop_x)
+	var lane_y := pile.playable_y()
+	bot.setup(kind, Vector2(SPAWN_X, lane_y), stop_x)
 	bot.exploded.connect(_on_popper_exploded)
 	bot.slammed.connect(_on_warden_slam)
 
@@ -199,6 +292,8 @@ func _tick_contacts() -> void:
 		if bot == null or bot.dead or not bot.can_contact():
 			continue
 		if bot.global_position.distance_to(volt.global_position) <= bot.contact_range:
+			if volt.is_launching():
+				continue
 			bot.mark_contact()
 			_hurt_volt()
 
