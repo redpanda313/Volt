@@ -21,6 +21,7 @@ var _over_body: Label
 var _chrome_top: TextureRect
 var _chrome_meter: TextureRect
 var _best := 0
+var _max_hp := 3
 
 
 func _ready() -> void:
@@ -161,10 +162,12 @@ func set_height(meters: float) -> void:
 	_meter.value = meters
 
 
-func set_hp(hp: int) -> void:
+func set_hp(hp: int, maximum: int = -1) -> void:
+	if maximum > 0:
+		_max_hp = maximum
 	for child in _hearts.get_children():
 		child.queue_free()
-	for i in 3:
+	for i in _max_hp:
 		var pip := ColorRect.new()
 		pip.custom_minimum_size = Vector2(18, 18)
 		pip.color = Color(0.24, 0.94, 1.0) if i < hp else Color(0.18, 0.2, 0.28, 0.55)
@@ -186,7 +189,31 @@ func toast(text: String) -> void:
 	tween.tween_property(_toast, "modulate:a", 0.0, 0.35).set_delay(0.9)
 
 
-func show_level_up() -> void:
+func show_level_up(title: String, subtitle: String, choices: Array) -> void:
+	var title_l := _level_up.get_node("Panel/VBox/Title") as Label
+	var sub_l := _level_up.get_node("Panel/VBox/Subtitle") as Label
+	if title_l:
+		title_l.text = title
+	if sub_l:
+		sub_l.text = subtitle
+		sub_l.visible = subtitle != ""
+	var col := _level_up.get_node("Panel/VBox") as VBoxContainer
+	var doomed: Array[Node] = []
+	for child in col.get_children():
+		if child is Button:
+			doomed.append(child)
+	for button in doomed:
+		col.remove_child(button)
+		button.free()
+	for item in choices:
+		var d: Dictionary = item
+		var icon := Art.upgrade_icon(int(d.get("icon", 0)))
+		col.add_child(_choice_button(
+			str(d.get("title", "")),
+			str(d.get("blurb", "")),
+			str(d.get("id", "")),
+			icon
+		))
 	_level_up.visible = true
 
 
@@ -202,10 +229,14 @@ func show_game_over(score: int, height_m: float, best: int) -> void:
 
 
 func _build_level_up() -> Control:
-	var wrap := _modal("LEVEL UP", "The pile hits a thermal. Pick a beat.")
+	var wrap := _modal("LEVEL UP", "Pick a path. A second unlock comes later.")
+	var panel := wrap.get_node("Panel") as Panel
+	if panel:
+		panel.position = Vector2(70, 240)
+		panel.size = Vector2(580, 680)
 	var col := wrap.get_node("Panel/VBox") as VBoxContainer
-	col.add_child(_choice_button("Arc Lash", "Swings also clip a nearby bot.", "arc"))
-	col.add_child(_choice_button("Afterimage", "Longer dash. More i-frames.", "dodge"))
+	if col:
+		col.size = Vector2(524, 620)
 	wrap.visible = false
 	return wrap
 
@@ -256,27 +287,33 @@ func _modal(title: String, subtitle: String) -> Control:
 	vbox.add_theme_constant_override("separation", 16)
 	panel.add_child(vbox)
 	var h := Label.new()
+	h.name = "Title"
 	h.text = title
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	h.add_theme_font_size_override("font_size", 40)
 	h.add_theme_color_override("font_color", Color(0.24, 0.94, 1.0))
 	vbox.add_child(h)
-	if subtitle != "":
-		var s := Label.new()
-		s.text = subtitle
-		s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		s.add_theme_font_size_override("font_size", 18)
-		s.add_theme_color_override("font_color", Color(0.78, 0.82, 0.92))
-		vbox.add_child(s)
+	var s := Label.new()
+	s.name = "Subtitle"
+	s.text = subtitle
+	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	s.add_theme_font_size_override("font_size", 18)
+	s.add_theme_color_override("font_color", Color(0.78, 0.82, 0.92))
+	s.visible = subtitle != ""
+	vbox.add_child(s)
 	return wrap
 
 
-func _choice_button(title: String, blurb: String, id: String) -> Button:
+func _choice_button(title: String, blurb: String, id: String, icon: Texture2D = null) -> Button:
 	var button := Button.new()
 	button.text = "%s\n%s" % [title, blurb]
-	button.custom_minimum_size = Vector2(0, 96)
+	button.custom_minimum_size = Vector2(0, 104)
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if icon:
+		button.icon = icon
+		button.expand_icon = true
+		button.add_theme_constant_override("icon_max_width", 72)
 	var n := StyleBoxFlat.new()
 	n.bg_color = Color(0.16, 0.2, 0.34, 1)
 	n.corner_radius_top_left = 14

@@ -2,7 +2,7 @@ extends CharacterBody2D
 class_name Volt
 
 signal died
-signal hp_changed(current: int)
+signal hp_changed(current: int, maximum: int)
 signal dashed(direction: Vector2)
 
 const MAX_HP := 3
@@ -15,13 +15,17 @@ const DASH_SPEED := 1066.0
 const AIR_DASH_SPEED := 988.0
 const DASH_SECS := 0.1923
 const DASH_SECS_LONG := 0.2462
+## Beat 4 tap-attack used DASH_SPEED. Beat 5: 75% faster → ×1.75.
+const ATTACK_DASH_MULT := 1.75
 const GROUND_FRICTION := 2600.0
 const AIR_FRICTION := 900.0
 const HURT_IFRAMES := 0.55
 const STRIKE_RANGE := 118.0
-const REBOUND_FRAC := 0.10
+## Beat 4 rebound was 10% of that dash. Beat 5: 2× distance → 20%.
+const REBOUND_FRAC := 0.20
 const MIN_X := 56.0
 const MAX_X := 664.0
+const JUMP_DASH_Y := -0.28
 
 @onready var visual: Node2D = $Visual
 @onready var idle: AnimatedSprite2D = $Visual/Idle
@@ -29,17 +33,29 @@ const MAX_X := 664.0
 @onready var dash: AnimatedSprite2D = $Visual/Dash
 @onready var hurt: AnimatedSprite2D = $Visual/Hurt
 @onready var run: AnimatedSprite2D = $Visual/Run
+@onready var attack_dash: AnimatedSprite2D = $Visual/AttackDash
+@onready var jump_dash: AnimatedSprite2D = $Visual/JumpDash
 
 var hp: int = MAX_HP
+var max_hp: int = MAX_HP
 var invuln: float = 0.0
 var pose_left: float = 0.0
 var facing: float = 1.0
 var arc_lash: bool = false
 var long_dodge: bool = false
+var arc_radius: float = 150.0
+var strike_damage: int = 1
+var air_dash_mult: float = 1.0
+var blink_iframes: bool = false
+var pack_heal: int = 1
+var pack_magnet: bool = false
+var combo_window: float = 1.15
+var combo_score_mult: float = 1.0
 var rest_x: float = 230.0
 var launching: bool = false
 var dashing: bool = false
 var seeking: bool = false
+var jump_dashing: bool = false
 var dodge_left: float = 0.0
 var launch_grace: float = 0.0
 var dash_dir: Vector2 = Vector2.RIGHT
@@ -50,9 +66,11 @@ var commit_distance: float = 0.0
 var seek_left: float = 0.0
 var rebound_left: float = 0.0
 var rebound_vel: Vector2 = Vector2.ZERO
+var _has_night5_spin := false
 
 
 func _ready() -> void:
+	add_to_group("volt")
 	motion_mode = MOTION_MODE_GROUNDED
 	up_direction = Vector2.UP
 	floor_snap_length = 8.0
@@ -72,25 +90,35 @@ func _ensure_collider() -> void:
 		col.name = "CollisionShape2D"
 		add_child(col)
 	var cap := CapsuleShape2D.new()
-	cap.radius = 18.0
-	cap.height = 78.0
+	cap.radius = 13.5
+	cap.height = 58.5
 	col.shape = cap
-	col.position = Vector2(0, -39)
+	col.position = Vector2(0, -29)
 
 
 func _apply_art() -> void:
 	var s := Art.ACTOR_SCALE
 	var travel := Art.volt_travel_frames()
+	var atk_dash := Art.volt_attack_dash_frames()
+	var screw := Art.volt_jump_dash_frames()
+	_has_night5_spin = Art.has_night5_spin()
 	Art.fit_animated(idle, Art.volt_idle_frames(), 252.0 * s, 0.46, &"idle", 10.0, true)
 	Art.fit_animated(attack, Art.volt_frames("attack"), 236.0 * s, 0.46, &"attack", 14.0, false)
 	Art.fit_animated(dash, travel, 228.0 * s, 0.46, &"dash", 16.0, true)
 	Art.fit_animated(run, travel, 228.0 * s, 0.46, &"run", 16.0, true)
 	Art.fit_animated(hurt, Art.volt_frames("hurt"), 228.0 * s, 0.46, &"hurt", 12.0, false)
+	Art.fit_animated(attack_dash, atk_dash, 228.0 * s, 0.46, &"attack_dash", 16.0, true)
+	Art.fit_animated(jump_dash, screw, 228.0 * s, 0.46, &"spin", 18.0, true)
 	idle.position.x = 8.0
 	attack.position.x = -6.0
 	dash.position.x = 16.0
 	if run:
 		run.position.x = 16.0
+	if attack_dash:
+		attack_dash.position.x = 16.0
+	if jump_dash:
+		jump_dash.position.x = 8.0
+		jump_dash.rotation = 0.0
 	hurt.position.x = 4.0
 
 
@@ -108,6 +136,7 @@ func _physics_process(delta: float) -> void:
 		dodge_left = maxf(0.0, dodge_left - delta)
 		if dodge_left <= 0.0:
 			dashing = false
+			jump_dashing = false
 	if launch_grace > 0.0:
 		launch_grace = maxf(0.0, launch_grace - delta)
 	if rebound_left > 0.0:
@@ -120,6 +149,7 @@ func _physics_process(delta: float) -> void:
 			_clear_seek()
 			if not dashing:
 				_show_idle()
+	_tick_spin(delta)
 
 	if rebound_left > 0.0:
 		velocity = rebound_vel
@@ -143,6 +173,15 @@ func _physics_process(delta: float) -> void:
 	if launching and not seeking and launch_grace <= 0.0 and is_on_floor() and velocity.y >= 0.0:
 		launching = false
 		_show_idle()
+
+
+func _tick_spin(delta: float) -> void:
+	if jump_dash == null:
+		return
+	if jump_dashing and jump_dash.visible and not _has_night5_spin:
+		jump_dash.rotation += 22.0 * delta
+	elif not jump_dashing and absf(jump_dash.rotation) > 0.01:
+		jump_dash.rotation = move_toward(jump_dash.rotation, 0.0, 20.0 * delta)
 
 
 func _steer_seek(delta: float) -> void:
@@ -178,6 +217,10 @@ func is_dashing() -> bool:
 	return dashing or dodge_left > 0.0
 
 
+func is_jump_dashing() -> bool:
+	return jump_dashing
+
+
 func apply_dash(direction: Vector2) -> void:
 	var dir := direction
 	if dir.length() < 0.12:
@@ -191,12 +234,21 @@ func apply_dash(direction: Vector2) -> void:
 	dash_speed = DASH_SPEED if is_on_floor() else AIR_DASH_SPEED
 	if long_dodge:
 		dash_speed *= 1.16
+	var is_jump := not is_on_floor() or dir.y < JUMP_DASH_Y
+	if is_jump:
+		secs *= air_dash_mult
 	velocity = dir * dash_speed
 	_clear_seek()
 	dashing = true
 	dodge_left = secs
 	invuln = maxf(invuln, secs * 0.75)
-	_play_travel_pose()
+	if blink_iframes:
+		invuln = maxf(invuln, secs + 0.22)
+	jump_dashing = is_jump
+	if is_jump:
+		_play_jump_dash_pose()
+	else:
+		_play_travel_pose()
 	pose_left = secs
 	dashed.emit(dir)
 
@@ -228,7 +280,7 @@ func _begin_seek(world_target: Vector2) -> void:
 	commit_distance = to.length()
 	seek_target = world_target
 	dash_dir = to.normalized()
-	dash_speed = DASH_SPEED
+	dash_speed = DASH_SPEED * ATTACK_DASH_MULT
 	if absf(dash_dir.x) >= 0.08:
 		facing = 1.0 if dash_dir.x >= 0.0 else -1.0
 		visual.scale.x = facing
@@ -236,13 +288,16 @@ func _begin_seek(world_target: Vector2) -> void:
 	seeking = true
 	launching = true
 	dashing = false
+	jump_dashing = false
 	dodge_left = 0.0
 	rebound_left = 0.0
 	launch_grace = 0.0
 	var travel := commit_distance / maxf(dash_speed, 1.0)
 	seek_left = travel + 0.28
 	invuln = maxf(invuln, travel)
-	_play_travel_pose()
+	if blink_iframes:
+		invuln = maxf(invuln, travel + 0.22)
+	_play_attack_dash_pose()
 	pose_left = travel + 0.35
 	floor_snap_length = 0.0
 
@@ -254,7 +309,7 @@ func bounce_from(other: Vector2) -> void:
 		back = signf(away)
 	var dist := commit_distance * REBOUND_FRAC
 	var dir := Vector2(back, -1.0).normalized()
-	var secs := clampf(dist / 420.0, 0.10, 0.22)
+	var secs := clampf(dist / 420.0, 0.10, 0.28)
 	if dist < 1.0:
 		dist = 1.0
 	rebound_vel = dir * (dist / secs)
@@ -275,6 +330,7 @@ func apply_knockback(from: Vector2, force: float, lift: float) -> void:
 	velocity = Vector2(away * force, lift)
 	_clear_seek()
 	dashing = false
+	jump_dashing = false
 	dodge_left = 0.0
 	rebound_left = 0.0
 	_show_pose(hurt)
@@ -286,12 +342,12 @@ func apply_knockback(from: Vector2, force: float, lift: float) -> void:
 func strikes(bot: Enemy) -> bool:
 	if not launching and not seeking:
 		return false
-	var my_chest := global_position + Vector2(0.0, -48.0)
+	var my_chest := global_position + Vector2(0.0, -36.0)
 	var chest := bot.global_position + Vector2(0.0, -bot.hit_size.y * 0.35)
 	if my_chest.distance_to(chest) <= STRIKE_RANGE:
 		return true
-	return absf(global_position.x - bot.global_position.x) < 72.0 \
-		and absf(global_position.y - bot.global_position.y) < 140.0
+	return absf(global_position.x - bot.global_position.x) < 64.0 \
+		and absf(global_position.y - bot.global_position.y) < 120.0
 
 
 func take_hit() -> void:
@@ -299,9 +355,24 @@ func take_hit() -> void:
 		return
 	hp -= 1
 	invuln = HURT_IFRAMES
-	hp_changed.emit(hp)
+	hp_changed.emit(hp, max_hp)
 	if hp <= 0:
 		died.emit()
+
+
+func heal(amount: int) -> int:
+	if hp <= 0 or amount <= 0:
+		return 0
+	var before := hp
+	hp = mini(hp + amount, max_hp)
+	if hp != before:
+		hp_changed.emit(hp, max_hp)
+	return hp - before
+
+
+func grant_max_hp(extra: int = 1) -> void:
+	max_hp += extra
+	heal(extra)
 
 
 func _clear_seek() -> void:
@@ -312,6 +383,7 @@ func _clear_seek() -> void:
 
 
 func _play_travel_pose() -> void:
+	jump_dashing = false
 	var horiz := absf(dash_dir.x) >= absf(dash_dir.y) * 0.65
 	if horiz and run and run.sprite_frames and run.sprite_frames.has_animation(&"run"):
 		_show_pose(run)
@@ -320,6 +392,27 @@ func _play_travel_pose() -> void:
 	_show_pose(dash)
 	if dash.sprite_frames and dash.sprite_frames.has_animation(&"dash"):
 		dash.play(&"dash")
+
+
+func _play_attack_dash_pose() -> void:
+	jump_dashing = false
+	if attack_dash and attack_dash.sprite_frames and attack_dash.sprite_frames.has_animation(&"attack_dash"):
+		_show_pose(attack_dash)
+		attack_dash.play(&"attack_dash")
+		return
+	_play_travel_pose()
+
+
+func _play_jump_dash_pose() -> void:
+	jump_dashing = true
+	if jump_dash:
+		jump_dash.rotation = 0.0
+		_show_pose(jump_dash)
+		if jump_dash.sprite_frames and jump_dash.sprite_frames.has_animation(&"spin"):
+			jump_dash.play(&"spin")
+		return
+	_play_travel_pose()
+	jump_dashing = true
 
 
 func _play_attack_pose() -> void:
@@ -335,6 +428,12 @@ func _show_pose(which: CanvasItem) -> void:
 	hurt.visible = which == hurt
 	if run:
 		run.visible = which == run
+	if attack_dash:
+		attack_dash.visible = which == attack_dash
+	if jump_dash:
+		jump_dash.visible = which == jump_dash
+		if which != jump_dash:
+			jump_dash.rotation = 0.0
 	if which != idle and idle.sprite_frames:
 		idle.pause()
 
@@ -346,6 +445,12 @@ func _show_idle() -> void:
 	hurt.visible = false
 	if run:
 		run.visible = false
+	if attack_dash:
+		attack_dash.visible = false
+	if jump_dash:
+		jump_dash.visible = false
+		jump_dash.rotation = 0.0
+	jump_dashing = false
 	visual.scale.x = facing
 	if idle.sprite_frames and idle.sprite_frames.has_animation(&"idle"):
 		idle.play(&"idle")

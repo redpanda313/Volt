@@ -4,7 +4,7 @@ Portrait **9:16** side-view climb. You are **Volt**. Swipe any direction to dash
 
 **This repo is Godot 4.x 2D only. There is no Unity project, no Narcalid, no Steam target.**
 
-Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-4 on-model dash when present, night-3 idle / attack / hurt + bot loops, night-2 debris / HUD, night-1 fallbacks), score + height meter, one mid-run level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
+Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-5 screw / attack-dash / bot attacks / packs / upgrade icons, night-4 on-model swipe travel, night-3 idle / swing / hurt + bot walk/hop, night-2 debris / HUD, night-1 fallbacks), score + height meter, two-step path level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
 
 ## Play (no Godot install)
 
@@ -14,8 +14,8 @@ After GitHub Pages is enabled (see below), the jam build is:
 
 Controls work in the browser:
 
-- **Tap / click an enemy** — Volt dashes all the way to that bot, attacks on contact, then rebounds 10% of that dash up and away. Tap again to chain.
-- **Swipe any direction** — short, fast dash. A ground dash knocks loose pile pieces.
+- **Tap / click an enemy** — Volt dashes all the way to that bot (night5 attack-dash), attacks on contact, then rebounds 20% of that dash up and away. Tap again to chain.
+- **Swipe any direction** — short, fast dash. Up / air swipe is a **screw jump-dash** (night5 spin). A ground dash knocks loose pile pieces.
 
 On a keyboard: `A`/`D`/`W`/`S` or arrows dash, `Space` launch at the nearest bot, `R` restart after death. No joystick. No on-screen ATTACK button.
 
@@ -32,14 +32,18 @@ Node names are sprite-swap ready:
 | --- | --- |
 | `World/Volt/Visual/Idle` | night3 `art/night3/slices/volt/idle/idle_01`…`_06` (fallback night-2 `volt_idle_01`…`_04`) |
 | `World/Volt/Visual/Attack` | night3 `volt/attack/attack_01`…`_06` (fallback night-1 `volt_attack.png`) |
-| `World/Volt/Visual/Dash` | night4 `art/night4/slices/volt/dash/dash_01`…`_06` (optional `run/`; **not** night3 dash; fallback night-1 `volt_dodge.png`) |
+| `World/Volt/Visual/Dash` | night4 `art/night4/slices/volt/dash/dash_01`…`_06` (ground swipe; **not** night3 dash; fallback night-1 `volt_dodge.png`) |
 | `World/Volt/Visual/Run` | same night4 travel loop as Dash until a dedicated `run/` pack lands |
+| `World/Volt/Visual/AttackDash` | night5 `art/night5/slices/volt/attack_dash/attack_dash_01`…`_06` (tap-attack only) |
+| `World/Volt/Visual/JumpDash` | night5 `art/night5/slices/volt/screw_attack/screw_01`…`_08` (`spin`; not AttackDash) |
 | `World/Volt/Visual/Hurt` | night3 `volt/knockback/knockback_01`…`_06` (fallback night-1 dodge) |
-| Enemy `Visual` | night3 `bots/scout/scout_walk_01`…`_04`, `popper_hop_01`…`_04`, `warden_walk_01`…`_04` |
+| Enemy `Visual` | night3 walk/hop + night5 `bots/{scout,popper,warden}_attack/*_atk_01`…`_04` |
 | Debris | `art/night2/slices/debris/{scout,popper,warden}/*_chunk_XX.png` |
 | HUD `ChromeTop` / `ChromeMeter` | `art/night2/hud/hud_top.png`, `hud_meter.png` (from the night-2 portrait / sheet) |
+| Health packs | night5 `art/night5/pickups/health_01`…`_03` |
+| Level-up icons | night5 `art/night5/icons/upgrade_01`…`_07` |
 
-Drop replacement PNGs on those paths to reskin. Expected layouts: `art/night4/README.md`, `art/night3/README.md`. Sheets live in `art/night1/`, `art/night2/`, `art/night3/`, `art/night4/sheets/`.
+Drop replacement PNGs on those paths to reskin. Expected layouts: `art/night5/README.md`, `art/night4/README.md`, `art/night3/README.md`. Sheets live in `art/night1/` … `art/night5/sheets/` (`.gdignore`’d).
 
 ## Export HTML5 (local)
 
@@ -81,15 +85,17 @@ Local alternative: export to `export/web/`, then upload that folder to any stati
 
 See **[PLAYTEST.md](PLAYTEST.md)** for the click-through against Pete’s notes, the Pages URL, and the Godot open path.
 
-## Changelog vs beat 3
+## Changelog vs beat 4
 
-- Actors shrink ~15% more (`Art.ACTOR_SCALE` 0.81 → **0.6885**).
-- Swipe dash is **half the distance** and **1.3× faster** than beat 3 (1066 px/s × 0.192s).
-- Gravity starts harder and fall terminal is higher (snappier jumps/falls). Bot locomotion gravity unchanged.
-- Tap attack **dashes all the way** to the bot and strikes on contact. Rebound is **10% of that dash**, up and away.
-- Night-4 on-model dash (`art/night4/slices/volt/dash/`) is the run/dash loop. Night-3 dash is off-model and is not played. Idle / attack / hurt stay night-3.
-- Juice keeps beat-3 trauma / hitstop / VFX / SFX and adds camera zoom/kick/rotation, 2D bloom, additive halo, dash afterimages.
-- Debris pile / solidify / raise, per-type knockback, and pile walk/hop are unchanged on purpose.
+- Actors shrink ~25% more (`Art.ACTOR_SCALE` 0.6885 → **0.516375**).
+- Bots spawn from **both** screen edges and chase / roam instead of parking.
+- Tap-attack is **75% faster** (×1.75) with rebound **2×** (20% of that dash).
+- Jump-dash plays night5 **screw spin** (`Visual/JumpDash`). Tap-attack plays night5 **attack_dash** (`Visual/AttackDash`). Not the same clip.
+- Bot lunges / fuse / slam play night5 attack sheets.
+- Screen shake intensity ×0.25. One shake at a time (replace / ignore — no additive stack).
+- Health packs: every 3rd kill + every Warden; one on screen; night5 `pickups/health_*.png`.
+- Two-step level-up (path at 5 kills, ability at 11) using night5 `icons/upgrade_*.png`.
+- Debris pile / solidify / raise, per-type knockback, and pile walk/hop stay.
 - HTML5 Pages path unchanged (single-thread Web export). After merge, redeploy via **Actions → Deploy HTML5 to GitHub Pages** on `main`.
 
 ## iOS / Android (later)
@@ -115,4 +121,4 @@ Portrait orientation is already set (`window/handheld/orientation` = portrait). 
 
 ## Out of scope (this cut)
 
-Full 8-bot roster, roguelike unlocks, Steam, Narcalid, Unity.
+Full 8-bot roster, Steam, Narcalid, Unity.
