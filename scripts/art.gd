@@ -1,6 +1,8 @@
 extends Node
 
-## Night-4 on-model run/dash. Night-3 idle / attack / hurt + bots. Night-2 debris / HUD. Night-1 fallbacks.
+## Night-5 screw / attack-dash / bot attacks / packs / icons.
+## Night-4 on-model run/dash. Night-3 idle / attack / hurt + bot walk/hop.
+## Night-2 debris / HUD. Night-1 fallbacks.
 
 const SLICE_DIR := "res://art/night1/slices/"
 const NIGHT2_IDLE_DIR := "res://art/night2/slices/volt_idle/"
@@ -8,14 +10,18 @@ const NIGHT2_DEBRIS := "res://art/night2/slices/debris/"
 const NIGHT3_VOLT := "res://art/night3/slices/volt/"
 const NIGHT3_BOTS := "res://art/night3/slices/bots/"
 const NIGHT4_VOLT := "res://art/night4/slices/volt/"
+const NIGHT5_VOLT := "res://art/night5/slices/volt/"
+const NIGHT5_BOTS := "res://art/night5/slices/bots/"
+const NIGHT5_PICKUPS := "res://art/night5/pickups/"
+const NIGHT5_ICONS := "res://art/night5/icons/"
 
 const HUD_TOP := "res://art/night2/hud/hud_top.png"
 const HUD_METER := "res://art/night2/hud/hud_meter.png"
 const HUD_PORTRAIT := "res://art/night2/hud/hud_portrait_9x16.png"
 const HUD_SHEET := "res://art/night2/hud/hud_elements_sheet.png"
 
-## Beat 3 was 0.81 (0.90 × 0.90). Beat 4 shrinks ~15% more: 0.81 * 0.85.
-const ACTOR_SCALE := 0.6885
+## Beat 4 was 0.6885. Beat 5 shrinks ~25% more: 0.6885 * 0.75.
+const ACTOR_SCALE := 0.516375
 
 const VOLT_IDLE := "volt_idle"
 const VOLT_ATTACK := "volt_attack"
@@ -23,6 +29,9 @@ const VOLT_DODGE := "volt_dodge"
 const SCOUT_IDLE := "scout_idle"
 const POPPER_IDLE := "popper_idle"
 const WARDEN_IDLE := "warden_idle"
+
+var _spin_cached := false
+var _has_spin := false
 
 
 func tex(slice_name: String) -> Texture2D:
@@ -94,7 +103,7 @@ func volt_idle_frames() -> Array[Texture2D]:
 	return frames
 
 
-## Night4 dash is the on-model run/dash. Dedicated run/ wins if Sable drops it.
+## Night4 dash is the on-model swipe travel. Dedicated run/ wins if present.
 ## Night3 dash is off-model and is never used here.
 func volt_travel_frames() -> Array[Texture2D]:
 	var night4_run := _volt_dir_frames(NIGHT4_VOLT, "run")
@@ -115,9 +124,54 @@ func has_night4_travel() -> bool:
 		or not _volt_dir_frames(NIGHT4_VOLT, "dash").is_empty()
 
 
+## Night5 tap-attack travel. Distinct from jump-dash screw.
+func volt_attack_dash_frames() -> Array[Texture2D]:
+	var night5 := sequence_frames(NIGHT5_VOLT + "attack_dash/", [
+		"attack_dash_",
+		"dash_",
+	], 8)
+	if not night5.is_empty():
+		return night5
+	return volt_travel_frames()
+
+
+func has_night5_attack_dash() -> bool:
+	return not sequence_frames(NIGHT5_VOLT + "attack_dash/", ["attack_dash_", "dash_"], 8).is_empty()
+
+
+## Night5 screw-attack spin. Empty until frames exist — do not invent art.
+func volt_spin_frames() -> Array[Texture2D]:
+	return sequence_frames(NIGHT5_VOLT + "screw_attack/", [
+		"screw_",
+		"screw_attack_",
+		"spin_",
+		"jump_dash_",
+	], 8)
+
+
+func has_night5_spin() -> bool:
+	if _spin_cached:
+		return _has_spin
+	_has_spin = not volt_spin_frames().is_empty()
+	_spin_cached = true
+	return _has_spin
+
+
+## Jump-dash clip. Night5 screw wins; else travel textures on the JumpDash node only.
+func volt_jump_dash_frames() -> Array[Texture2D]:
+	var night5 := volt_spin_frames()
+	if not night5.is_empty():
+		return night5
+	return volt_travel_frames()
+
+
 func volt_frames(anim: String) -> Array[Texture2D]:
 	if anim == "run" or anim == "dash":
 		return volt_travel_frames()
+	if anim == "attack_dash":
+		return volt_attack_dash_frames()
+	if anim == "spin" or anim == "jump_dash" or anim == "screw":
+		return volt_jump_dash_frames()
 	var night3 := _volt_dir_frames(NIGHT3_VOLT, anim)
 	if not night3.is_empty():
 		return night3
@@ -151,6 +205,45 @@ func bot_frames(kind_name: String) -> Array[Texture2D]:
 		if fallback:
 			frames.append(fallback)
 	return frames
+
+
+func bot_attack_frames(kind_name: String) -> Array[Texture2D]:
+	var night5 := sequence_frames("%s%s_attack/" % [NIGHT5_BOTS, kind_name], [
+		"%s_atk_" % kind_name,
+		"%s_attack_" % kind_name,
+		"atk_",
+		"attack_",
+	], 8)
+	if not night5.is_empty():
+		return night5
+	var nested := sequence_frames("%s%s/attack/" % [NIGHT3_BOTS, kind_name], [
+		"%s_attack_" % kind_name,
+		"attack_",
+	], 8)
+	if not nested.is_empty():
+		return nested
+	var move := bot_frames(kind_name)
+	if move.size() >= 3:
+		var punch: Array[Texture2D] = []
+		punch.append(move[1])
+		punch.append(move[mini(2, move.size() - 1)])
+		punch.append(move[move.size() - 1])
+		punch.append(move[1])
+		return punch
+	return move
+
+
+func health_pack_frames() -> Array[Texture2D]:
+	return sequence_frames(NIGHT5_PICKUPS, ["health_"], 4)
+
+
+func upgrade_icon(index: int) -> Texture2D:
+	if index <= 0:
+		return null
+	var path := "%supgrade_%02d.png" % [NIGHT5_ICONS, index]
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	return null
 
 
 func debris_chunks(kind_name: String) -> Array[Texture2D]:

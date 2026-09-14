@@ -3,7 +3,8 @@ class_name Juice
 
 ## Premium hit juice: camera trauma/zoom/kick, 2D bloom, damage pulse, impact bursts, punchy SFX.
 
-const SHAKE_PX := 52.0
+## Beat 4 was 52px. Beat 5 intensity ×0.25. One shake at a time — never add.
+const SHAKE_PX := 13.0
 const TRAUMA_DECAY := 1.05
 const BLOOM_REST := 0.10
 const BLOOM_I_REST := 0.38
@@ -124,7 +125,10 @@ func punch_zoom(amount: float) -> void:
 func kick(direction: Vector2, px: float) -> void:
 	if direction.length() < 0.01:
 		return
-	_kick += direction.normalized() * px
+	var next := direction.normalized() * px
+	if _kick.length() > 0.5 and next.length() < _kick.length():
+		return
+	_kick = next
 
 
 func bloom_flash(amount: float = 1.0) -> void:
@@ -138,7 +142,10 @@ func start_trail(from: Node2D, seconds: float = 0.24) -> void:
 
 
 func add_trauma(amount: float) -> void:
-	trauma = clampf(trauma + amount, 0.0, 1.0)
+	var next := clampf(amount, 0.0, 1.0)
+	if trauma > 0.04 and next < trauma:
+		return
+	trauma = next
 
 
 func hitstop(seconds: float = 0.08) -> void:

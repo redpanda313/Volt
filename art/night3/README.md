@@ -21,7 +21,7 @@ Also accepted: `volt_idle_01.png`, `volt_attack_01.png`, `volt_dash_01.png`, `vo
 - `slices/bots/popper/popper_hop_01..04.png`
 - `slices/bots/warden/warden_walk_01..04.png`
 
-Wired as `SpriteFrames` on each enemy `Visual` (`walk` or `hop`). Bots are `CharacterBody2D`s that stand on the pile / playable floor.
+Wired as `SpriteFrames` on each enemy `Visual` (`walk` or `hop`). Beat 5 **attack** clips come from night5 `art/night5/slices/bots/*_attack/` (`Art.bot_attack_frames`). Bots are `CharacterBody2D`s that stand on the pile / playable floor.
 
 Also accepted: `walk_01.png` / `hop_01.png` in the same folders.
 

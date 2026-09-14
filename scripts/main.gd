@@ -2,9 +2,11 @@ extends Node2D
 
 enum State { PLAYING, LEVEL_UP, GAME_OVER }
 
-const LEVEL_UP_KILLS := 5
+const LEVEL_AT := 5
+const ASCEND_AT := 11
 const VOLT_X := 230.0
-const SPAWN_X := 820.0
+const SPAWN_LEFT := 58.0
+const SPAWN_RIGHT := 662.0
 const SAVE_PATH := "user://volt.cfg"
 const ARENA_LEFT := 8.0
 const ARENA_RIGHT := 712.0
@@ -25,11 +27,15 @@ var score: int = 0
 var best: int = 0
 var height_m: float = 0.0
 var kills: int = 0
-var leveled := false
+var level_picks: int = 0
+var path_id := ""
 var spawn_in: float = 0.40
 var combo_left: float = 0.0
 var combo: int = 0
 var _ground: StaticBody2D
+var _pack: HealthPack
+var _kill_drops: int = 0
+var _spawn_right := true
 
 
 func _ready() -> void:
@@ -48,7 +54,7 @@ func _ready() -> void:
 	hud.upgrade_picked.connect(_on_upgrade)
 	hud.set_score(0)
 	hud.set_height(0.0)
-	hud.set_hp(volt.hp)
+	hud.set_hp(volt.hp, volt.max_hp)
 	hud.set_climb_level(1)
 	hud.fade_hint()
 	camera.position = Vector2(360, 640)
@@ -108,6 +114,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_tick_launch_hits()
 	_tick_contacts()
+	_tick_packs(delta)
 	_follow_camera(delta)
 
 
@@ -209,12 +216,12 @@ func _strike_on_contact(primary: Enemy) -> void:
 			var other := child as Enemy
 			if other == null or other == primary or other.dead:
 				continue
-			if other.global_position.distance_to(primary.global_position) <= 150.0:
+			if other.global_position.distance_to(primary.global_position) <= volt.arc_radius:
 				_hit_enemy(other)
 
 
 func _hit_enemy(enemy: Enemy) -> void:
-	var slain := enemy.hurt(1)
+	var slain := enemy.hurt(volt.strike_damage)
 	var chest := enemy.global_position + Vector2(0.0, -enemy.hit_size.y * 0.35)
 	juice.attack_punch(chest)
 	if slain:
@@ -224,8 +231,8 @@ func _hit_enemy(enemy: Enemy) -> void:
 func _on_kill(enemy: Enemy) -> void:
 	kills += 1
 	combo = combo + 1 if combo_left > 0.0 else 1
-	combo_left = 1.15
-	var gain := enemy.score_value() + maxi(0, combo - 1) * 2
+	combo_left = volt.combo_window
+	var gain := enemy.score_value() + int(float(maxi(0, combo - 1) * 2) * volt.combo_score_mult)
 	score += gain
 	height_m += 14.0 + float(enemy.kind) * 4.0
 	sky.height_t = clampf(height_m / 360.0, 0.0, 1.0)
@@ -234,8 +241,8 @@ func _on_kill(enemy: Enemy) -> void:
 	pile.shatter(enemy)
 	juice.kill_burst(enemy.global_position + Vector2(0, -80))
 	_float_pts(enemy.global_position + Vector2(0, -120), "+%d" % gain)
-	if not leveled and kills >= LEVEL_UP_KILLS:
-		_offer_level_up()
+	_maybe_drop_pack(enemy)
+	_maybe_level_up()
 
 
 func _on_layer_completed(layer_index: int, playable_y: float) -> void:
@@ -259,13 +266,20 @@ func _spawn_bot() -> void:
 	var bot := _enemy_scene.instantiate() as Enemy
 	enemies.add_child(bot)
 	var kind := _pick_kind()
-	var stop_x := 318.0 + randf_range(-8.0, 18.0)
+	var from_right := randf() < 0.5
+	if randf() < 0.30:
+		from_right = _spawn_right
+	_spawn_right = not from_right
+	var spawn_x := SPAWN_RIGHT if from_right else SPAWN_LEFT
+	var stop_x := 330.0 + randf_range(-12.0, 18.0)
+	if not from_right:
+		stop_x = 390.0 + randf_range(-16.0, 16.0)
 	if kind == Enemy.Kind.POPPER:
-		stop_x = 348.0 + randf_range(-8.0, 16.0)
+		stop_x += 12.0
 	if kind == Enemy.Kind.WARDEN:
-		stop_x = 336.0
-	var lane_y := pile.surface_y_at(SPAWN_X)
-	bot.setup(kind, Vector2(SPAWN_X, lane_y), stop_x)
+		stop_x = 360.0 if from_right else 400.0
+	var lane_y := pile.surface_y_at(spawn_x)
+	bot.setup(kind, Vector2(spawn_x, lane_y), stop_x, from_right)
 	bot.exploded.connect(_on_popper_exploded)
 	bot.slammed.connect(_on_warden_slam)
 
@@ -316,21 +330,113 @@ func _hurt_volt(bot: Enemy) -> void:
 	hud.toast("HIT")
 
 
-func _offer_level_up() -> void:
-	leveled = true
+func _maybe_drop_pack(enemy: Enemy) -> void:
+	if _pack != null and is_instance_valid(_pack):
+		return
+	_kill_drops += 1
+	var every := 2 if volt.pack_magnet else 3
+	var drop := enemy.kind == Enemy.Kind.WARDEN or (_kill_drops % every == 0)
+	if not drop:
+		return
+	var origin := enemy.global_position + Vector2(0.0, -24.0)
+	_pack = HealthPack.spawn($World, origin, pile.surface_y_at(origin.x))
+
+
+func _tick_packs(delta: float) -> void:
+	if _pack == null or not is_instance_valid(_pack):
+		_pack = null
+		return
+	if volt.pack_magnet:
+		_pack.attract_toward(volt.global_position, delta)
+	if volt.hp >= volt.max_hp:
+		return
+	var rad := 96.0 if volt.pack_magnet else 50.0
+	if _pack.global_position.distance_to(volt.global_position) <= rad:
+		var gained := volt.heal(volt.pack_heal)
+		if gained > 0:
+			juice.bloom_flash(0.45)
+			hud.toast("PACK +%d" % gained)
+			_pack.queue_free()
+			_pack = null
+
+
+func _maybe_level_up() -> void:
+	if level_picks == 0 and kills >= LEVEL_AT:
+		_offer_level_up(1)
+	elif level_picks == 1 and kills >= ASCEND_AT:
+		_offer_level_up(2)
+
+
+func _offer_level_up(tier: int) -> void:
 	state = State.LEVEL_UP
 	Engine.time_scale = 1.0
 	get_tree().paused = true
-	hud.show_level_up()
+	if tier == 1:
+		hud.show_level_up("LEVEL UP", "Pick a path. A second unlock comes later.", [
+			{"id": "atk", "title": "ATK UP", "blurb": "Arc Lash: swings also clip a nearby bot.", "icon": 1},
+			{"id": "hp", "title": "HP UP", "blurb": "+1 max heart. Survive a longer climb.", "icon": 2},
+			{"id": "dash", "title": "DASH RANGE", "blurb": "Afterimage: longer dash and more i-frames.", "icon": 3},
+		])
+		return
+	var choices: Array = []
+	match path_id:
+		"atk":
+			choices = [
+				{"id": "shield", "title": "SHIELD BREAK", "blurb": "Strikes deal 2 damage. Wardens fold faster.", "icon": 5},
+				{"id": "combo", "title": "COMBO TIME", "blurb": "Combo window stretches. Chain payouts grow.", "icon": 6},
+			]
+		"dash":
+			choices = [
+				{"id": "screw", "title": "SCREW SPIN", "blurb": "Jump-dash travels farther. Stay in the air.", "icon": 4},
+				{"id": "combo", "title": "COMBO TIME", "blurb": "Combo window stretches. Chain payouts grow.", "icon": 6},
+			]
+		_:
+			choices = [
+				{"id": "medbay", "title": "MEDBAY", "blurb": "Health packs restore 2 HP.", "icon": 2},
+				{"id": "magnet", "title": "PACK PULL", "blurb": "Packs drop more often and pull toward you.", "icon": 7},
+			]
+	hud.show_level_up("ASCEND", "Path locked. Unlock an ability.", choices)
 
 
 func _on_upgrade(id: String) -> void:
-	if id == "arc":
-		volt.arc_lash = true
-		hud.toast("ARC LASH")
-	elif id == "dodge":
-		volt.long_dodge = true
-		hud.toast("AFTERIMAGE")
+	match id:
+		"atk":
+			path_id = "atk"
+			volt.arc_lash = true
+			hud.toast("ATK UP")
+		"hp":
+			path_id = "hp"
+			volt.grant_max_hp(1)
+			hud.toast("HP UP")
+		"dash":
+			path_id = "dash"
+			volt.long_dodge = true
+			hud.toast("DASH RANGE")
+		"shield":
+			volt.strike_damage = 2
+			hud.toast("SHIELD BREAK")
+		"combo":
+			volt.combo_window = 1.85
+			volt.combo_score_mult = 2.0
+			hud.toast("COMBO TIME")
+		"screw":
+			volt.air_dash_mult = 1.35
+			hud.toast("SCREW SPIN")
+		"medbay":
+			volt.pack_heal = 2
+			hud.toast("MEDBAY")
+		"magnet":
+			volt.pack_magnet = true
+			hud.toast("PACK PULL")
+		"arc":
+			path_id = "atk"
+			volt.arc_lash = true
+			hud.toast("ATK UP")
+		"dodge":
+			path_id = "dash"
+			volt.long_dodge = true
+			hud.toast("DASH RANGE")
+	level_picks += 1
 	hud.hide_modals()
 	state = State.PLAYING
 	get_tree().paused = false
@@ -446,7 +552,12 @@ func _run_demo() -> void:
 	await _shot("06_warden_on_pile")
 	_dash(Vector2(0.15, -1.0))
 	await get_tree().create_timer(0.18).timeout
-	await _shot("07_dash_up")
+	await _shot("07_jump_dash_spin")
+	var lefty := _enemy_scene.instantiate() as Enemy
+	enemies.add_child(lefty)
+	lefty.setup(Enemy.Kind.SCOUT, Vector2(SPAWN_LEFT, pile.playable_y()), 390.0, false)
+	await get_tree().create_timer(0.35).timeout
+	await _shot("08_left_spawn")
 	if OS.get_environment("VOLT_DEMO_QUIT") == "1":
 		await get_tree().create_timer(0.35).timeout
 		get_tree().quit()
