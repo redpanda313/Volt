@@ -1,4 +1,4 @@
-# Playtest — Beat 6 (easy start + jump chains + night6 junk)
+# Playtest — Beat 7 (anti-bury + night7 sky platforms)
 
 ## Where to play
 
@@ -20,24 +20,35 @@ Local HTML5: `GODOT=godot ./tools/export_web.sh` then `python3 -m http.server 80
 
 Empty taps do nothing. Do not look for a virtual stick or an ATTACK button.
 
-## Checklist vs Pete’s beat-6 notes
+## Checklist vs Pete’s beat-7 notes
 
 1. **Size locked** — `Art.ACTOR_SCALE = 0.516375` (beat 5). Volt + Scout / Popper / Warden, colliders included. **Do not shrink.**
-2. **Easy start, 1 spawn** — first bot after **1.40s**. Exactly **one live bot** until 8 kills. Left **or** right edge (`x≈58` / `x≈662`), never both at once early. First bots are slow (Scout **215**, Popper **118**, Warden **54**) with long telegraphs / late lunges.
-3. **Slow ramp per bot** — each spawn gets `threat` = spawn index. Speed × `(1 + 0.028 × threat)`, cap **1.70×**. Lunges, fuse, slam, and attack playback ease in on the same index. See curve below.
-4. **Spawn rate climbs slowly** — still 1-at-a-time at first. Cadence `2.55 × 0.965^kills`, clamped **1.20–2.70s**. During the solo window a kill **resets** that wait (no instant next bot). At **8 kills** a second bot can overlap. At **16** a third. Never 4.
-5. **One jump + attack-refresh** — ground jump (or air swipe) spends the jump. `Volt.refresh_jump()` on strike / rebound. Jump-dash that overlaps a bot also strikes and refreshes. Landing on the floor restores extras only (ground jump is implicit).
-6. **EXTRA JUMP** — level-up path at 5 kills, and an ascend pick if you skipped it. Grants **+1 true air jump** (`volt.extra_jumps`). Attack-refresh still works. Icon: sheet cell 4 (same jump/screw cell as SCREW SPIN).
-7. **Night6 junk** — floor drops night6 `scout/popper/warden_junk_*` plus night2 chunks + `micro_*` fill. `World/Foreground` plays `fg_junk/fg_01..17` as a parallax FG layer. `sheets/` and `debris_night2_reuse/` are `.gdignore`’d; keyed atlases are Web-export excluded. No invented night6 frames.
+2. **Ramp + layered junk stay** — easy 1-spawn start, slow threat/cadence curve, night6 junk + micro + FG. Do not flatten the pile feel.
+3. **ANTI-BURY (highest priority)** — junk must **not** harden into floor on top of the player. If a new solidified debris layer would form over / around Volt and seal them, they are **pushed to the surface** of that lid (`RobotPile.unbury_actors` / `lift_out_of_junk`). Same lift for bots so they are not soft-locked under a weld. Layer-complete no longer yanks everyone to `playable_y` (that would pull bots off sky pads).
+4. **Sky one-way platforms** — short night7 pads float above the floor. Pass **through from below**, **stand on top**. Works for **Volt and bots** (`CollisionShape2D.one_way_collision` on `World/Ledges`).
+5. **Some bots spawn on pads** — after **3 kills**, **40%** of spawns land on a live pad (random pad in camera / play bounds) instead of a floor edge. Early 1-spawn start stays on the floor.
+6. **Random X and Y** — pads roll X in **96–624** and Y in climb bands (about **100–900px** above the current floor) with overlap rejection. Mountain rise can swallow a pad (disabled when the pile reaches it).
+7. **Health packs more often** — beat 5/6 was every **3rd** kill + every Warden (magnet: every **2nd**). Beat 7 is every **2nd** kill + every Warden (magnet: **every** kill). Still **one pack** on screen. See rule below.
+8. **Night7 art wired** — `art/night7/platforms/01_catwalk.png` … `06_step_pad.png` via `Art.night7_platform_frames()`. `sheets/` is `.gdignore`’d. `platforms_sheet_keyed.png` is Web-export excluded. Placeholder slab exists only if those six frames are missing — **no invented Sable frames**.
+9. **Keep** — jump → attack → jump chains, EXTRA JUMP, debris pile / solidify / raise, night5/6 art, portrait 9:16, Pages-safe single-thread Web export.
 
-Still in: debris pile / solidify / raise, per-type knockback, bot walk/hop on the pile, Scout / Popper / Warden only, night5 anims, health packs, branching level-ups, shake ×0.25 no-stack, portrait 9:16, score + height, game over + restart, Pages-safe single-thread Web export.
+## Health pack drop rule (beat 7)
 
-## Difficulty / spawn curve
+| | Beat 5/6 | Beat 7 |
+| --- | --- | --- |
+| Base | every **3rd** kill | every **2nd** kill |
+| PACK PULL | every **2nd** kill | **every** kill |
+| Warden | always (if no pack out) | always (if no pack out) |
+| Cap | one on screen | one on screen |
+
+Constants: `PACK_EVERY = 2`, `PACK_EVERY_MAGNET = 1` in `scripts/main.gd`.
+
+## Difficulty / spawn curve (unchanged from beat 6)
 
 | Kills | Live bots | Spawn wait (approx) | What you feel |
 | --- | --- | --- | --- |
 | 0 | 1 | first 1.40s, then 2.55s | One slow Scout. Easy to dodge. |
-| 3 | 1 | ~2.32s | Poppers can appear. Still 1v1. |
+| 3 | 1 | ~2.32s | Poppers can appear. Still 1v1. **Platform spawns can start.** |
 | 7 | 1 | ~2.02s | Warden can roll. Still solo. |
 | 8 | 2 | ~1.95s | First overlap / both edges. |
 | 16 | 3 | ~1.46s | Late pressure. |
@@ -51,22 +62,30 @@ Per-spawn aggression (index `t`):
 - Warden slam CD: `2.85 − 0.055t` (min 1.70s)
 - Attack clip speed: `1.05 + 0.025t` (max 1.50)
 
-## Beat 5 → beat 6 (short)
+## Beat 6 → beat 7 (short)
 
-Size stays. Early fight is one slow bot, not dual-side pressure. Difficulty and cadence climb gently. One jump unless a strike refreshes it; EXTRA JUMP is a real extra. Pile is denser with night6 junk + micro + FG props.
+Size, ramp, junk, jump-refresh, EXTRA JUMP stay. Critical feel fail: **do not get sealed under a new junk floor** — pop to the lid. Sky one-way pads (night7 art) sit in the climb path; some bots spawn on them. Packs drop more often.
 
-## Night-6 expected paths
+## Night-7 expected paths
 
 ```
-art/night6/debris/scout/scout_junk_01.png … scout_junk_16.png
-art/night6/debris/popper/popper_junk_01.png … popper_junk_16.png
-art/night6/debris/warden/warden_junk_01.png … warden_junk_16.png
-art/night6/debris/micro/micro_01.png … micro_48.png
-art/night6/fg_junk/fg_01.png … fg_17.png
+art/night7/platforms/01_catwalk.png
+art/night7/platforms/02_tech_slab.png
+art/night7/platforms/03_girder.png
+art/night7/platforms/04_scrap.png
+art/night7/platforms/05_cloud_tech.png
+art/night7/platforms/06_step_pad.png
 ```
 
-API: `Art.night6_kind_junk`, `Art.night6_micro_frames`, `Art.night6_fg_frames`, `Art.has_night6_junk` / `_micro` / `_fg`. `Art.debris_chunks` = night6 kind junk + night2 chunks.
+API: `Art.night7_platform_frames`, `Art.night7_platform_names`, `Art.has_night7_platforms`, `Art.placeholder_platform_frames` (non-Sable fallback only).
 
-`sheets/` and `debris_night2_reuse/` are `.gdignore`’d (Godot ignores those whole folders). The three keyed atlases next to the slices are listed in the Web `exclude_filter` so Pages does not pack them twice.
+`art/night7/sheets/` is `.gdignore`’d. `platforms_sheet_keyed.png` is in the Web `exclude_filter`.
 
-See `art/night6/README.md`. Night5 screw / attack-dash / packs / icons stay. Night2 chunks still drop.
+See `art/night7/README.md`. Night6 junk / FG and night5 screw / packs / icons stay.
+
+## Headless check
+
+```
+godot --headless --path . -s tools/beat7_check.gd
+godot --headless --path . res://tools/beat7_runtime.tscn
+```

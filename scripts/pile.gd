@@ -3,6 +3,7 @@ class_name RobotPile
 
 ## Killed bots shatter. Loose top-layer chunks can be dashed; a full layer welds and lifts the floor.
 ## Beat 6: denser night6 junk + micro fill. Foreground props live on ForegroundJunk.
+## Beat 7: never seal actors under a new floor — lift them to the lid surface.
 
 signal layer_completed(layer_index: int, playable_y: float)
 
@@ -33,19 +34,95 @@ func playable_y() -> float:
 	return BASE_FLOOR - float(completed_layers) * LAYER_HEIGHT
 
 
+func _is_floor_piece(piece: DebrisPiece) -> bool:
+	return piece != null and is_instance_valid(piece) and (piece.settled or piece.solid)
+
+
 func surface_y_at(x: float, search_radius: float = 52.0) -> float:
 	var y := playable_y()
 	for piece in _pieces:
-		if piece == null or not is_instance_valid(piece):
+		if not _is_floor_piece(piece):
 			continue
-		if not piece.settled and not piece.solid:
+		if absf(piece.global_position.x - x) > search_radius + piece.half_width():
 			continue
-		if absf(piece.global_position.x - x) > search_radius:
-			continue
-		var top := piece.global_position.y - 18.0
+		var top := piece.top_y()
 		if top < y:
 			y = top
 	return y
+
+
+func seal_surface_y(x: float, feet_y: float, head_y: float, half_w: float) -> float:
+	## Highest lid (lowest Y) among floor chunks that would bury this body. INF if none.
+	var seal := INF
+	for piece in _pieces:
+		if not _is_floor_piece(piece):
+			continue
+		if absf(piece.global_position.x - x) > piece.half_width() + half_w + 2.0:
+			continue
+		var top := piece.top_y()
+		var bot := piece.bottom_y()
+		if top < feet_y - 2.0 and bot > head_y - 26.0:
+			if top < seal:
+				seal = top
+	return seal
+
+
+func lift_out_of_junk(body: Node2D, body_h: float, half_w: float, force_floor: bool = false) -> bool:
+	if body == null or not is_instance_valid(body):
+		return false
+	var feet := body.global_position.y
+	var head := feet - body_h
+	var dest := INF
+	var seal := seal_surface_y(body.global_position.x, feet, head, half_w)
+	if seal < INF:
+		dest = seal
+	if force_floor and feet > playable_y() + 2.0:
+		dest = minf(dest, playable_y())
+	if dest >= INF:
+		return false
+	if feet <= dest + 0.5:
+		return false
+	body.global_position.y = dest
+	if body is CharacterBody2D:
+		var cb := body as CharacterBody2D
+		cb.velocity.y = minf(cb.velocity.y, 0.0)
+	return true
+
+
+func unbury_actors(force_floor: bool = false) -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	var volt := tree.get_first_node_in_group("volt") as Node2D
+	if volt:
+		lift_out_of_junk(volt, 58.5, 14.0, force_floor)
+	for node in tree.get_nodes_in_group("bots"):
+		if node == null or not is_instance_valid(node):
+			continue
+		var bot := node as Enemy
+		if bot != null and bot.dead:
+			continue
+		lift_out_of_junk(node as Node2D, 56.0, 16.0, force_floor)
+
+
+func register_piece(piece: DebrisPiece) -> void:
+	if piece != null and not _pieces.has(piece):
+		_pieces.append(piece)
+
+
+func form_lid_at(origin: Vector2, count: int = 7) -> void:
+	## Test / demo: weld a solid junk lid over a point, then unbury anyone under it.
+	var chunks := Art.debris_chunks("scout")
+	if chunks.is_empty():
+		return
+	for i in count:
+		var tex: Texture2D = chunks[i % chunks.size()]
+		var pos := Vector2(origin.x + float(i - count / 2) * 20.0, origin.y - 34.0)
+		var piece := DebrisPiece.spawn(self, tex, pos, 64.0)
+		piece.global_position = pos
+		register_piece(piece)
+		piece.solidify()
+	unbury_actors(true)
 
 
 func seed_floor() -> void:
@@ -60,8 +137,8 @@ func seed_floor() -> void:
 		var x := 70.0 + float(i) * 78.0 + randf_range(-14.0, 14.0)
 		var pos := Vector2(clampf(x, 48.0, 672.0), floor_y - randf_range(4.0, 16.0))
 		var piece := DebrisPiece.spawn(self, tex, pos, 70.0)
-		piece.rest_on_floor()
 		_pieces.append(piece)
+		piece.rest_on_floor()
 	_sprinkle_micro(Vector2(360.0, floor_y), 14)
 	if _fg:
 		_fg.seed_props(floor_y)
@@ -118,6 +195,7 @@ func knock_top_layer(origin: Vector2, direction: Vector2) -> void:
 
 func _physics_process(_delta: float) -> void:
 	_try_complete_layer()
+	unbury_actors(false)
 
 
 func _try_complete_layer() -> void:
@@ -141,6 +219,7 @@ func _try_complete_layer() -> void:
 		piece.solidify()
 	completed_layers += 1
 	_lift_decor(-LAYER_HEIGHT)
+	unbury_actors(true)
 	layer_completed.emit(completed_layers, playable_y())
 
 

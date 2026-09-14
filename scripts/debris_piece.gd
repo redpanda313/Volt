@@ -8,6 +8,7 @@ var settled := false
 var counts_for_layer := true
 var _settle_time := 0.0
 var _sprite: Sprite2D
+var _col_size := Vector2(18.0, 18.0)
 
 
 static func spawn(parent: Node, texture: Texture2D, pos: Vector2, fit_px: float = 64.0) -> DebrisPiece:
@@ -45,8 +46,21 @@ func _build(texture: Texture2D, fit_px: float = 64.0) -> void:
 		maxf(14.0, float(texture.get_width()) * fit * 0.72),
 		maxf(14.0, float(texture.get_height()) * fit * 0.72)
 	)
+	_col_size = rect.size
 	col.shape = rect
 	add_child(col)
+
+
+func top_y() -> float:
+	return global_position.y - _col_size.y * 0.5
+
+
+func bottom_y() -> float:
+	return global_position.y + _col_size.y * 0.5
+
+
+func half_width() -> float:
+	return _col_size.x * 0.5
 
 
 func burst(impulse: Vector2) -> void:
@@ -81,9 +95,9 @@ func solidify() -> void:
 	freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
 	collision_layer = 0
 	collision_mask = 0
-	set_collision_layer_value(1, true)
 	sleeping = true
 	modulate = Color(0.78, 0.84, 0.94)
+	_harden_world()
 
 
 func _physics_process(delta: float) -> void:
@@ -109,5 +123,16 @@ func _mark_settled() -> void:
 	angular_velocity = 0.0
 	freeze = true
 	freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
+	_harden_world()
+
+
+func _harden_world() -> void:
+	## Become walkable floor only after anyone under this chunk is lifted.
+	collision_layer = 0
+	collision_mask = 0
+	set_collision_layer_value(4, true)
+	var pile := get_parent() as RobotPile
+	if pile:
+		pile.unbury_actors(false)
 	collision_layer = 0
 	set_collision_layer_value(1, true)

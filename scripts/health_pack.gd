@@ -1,7 +1,7 @@
 extends Node2D
 class_name HealthPack
 
-## Night5 pickup. Rule lives in PLAYTEST.md: every 3rd kill + every Warden, one on screen.
+## Night5 pickup. Beat 7 rule (PLAYTEST.md): every 2nd kill + every Warden; magnet every kill. One on screen.
 
 const LIFE := 10.0
 

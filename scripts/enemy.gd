@@ -61,6 +61,7 @@ var _bob: float = 0.0
 
 
 func _ready() -> void:
+	add_to_group("bots")
 	motion_mode = MOTION_MODE_GROUNDED
 	up_direction = Vector2.UP
 	floor_snap_length = 22.0

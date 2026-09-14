@@ -4,7 +4,7 @@ Portrait **9:16** side-view climb. You are **Volt**. Swipe any direction to dash
 
 **This repo is Godot 4.x 2D only. There is no Unity project, no Narcalid, no Steam target.**
 
-Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-6 denser junk / micro / FG props, night-5 screw / attack-dash / bot attacks / packs / upgrade icons, night-4 on-model swipe travel, night-3 idle / swing / hurt + bot walk/hop, night-2 debris / HUD, night-1 fallbacks), easy 1-spawn start that ramps slowly, one jump with attack-refresh chains + EXTRA JUMP, score + height meter, two-step path level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
+Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-7 sky one-way platforms, night-6 denser junk / micro / FG props, night-5 screw / attack-dash / bot attacks / packs / upgrade icons, night-4 on-model swipe travel, night-3 idle / swing / hurt + bot walk/hop, night-2 debris / HUD, night-1 fallbacks), easy 1-spawn start that ramps slowly, anti-bury pile lift, one jump with attack-refresh chains + EXTRA JUMP, score + height meter, two-step path level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
 
 ## Play (no Godot install)
 
@@ -39,12 +39,13 @@ Node names are sprite-swap ready:
 | `World/Volt/Visual/Hurt` | night3 `volt/knockback/knockback_01`…`_06` (fallback night-1 dodge) |
 | Enemy `Visual` | night3 walk/hop + night5 `bots/{scout,popper,warden}_attack/*_atk_01`…`_04` |
 | Debris | night6 `art/night6/debris/{scout,popper,warden}/*_junk_XX.png` + night2 `*_chunk_XX.png` + `art/night6/debris/micro/micro_*.png` |
+| `World/Ledges` | night7 `art/night7/platforms/01_catwalk`…`06_step_pad` (one-way sky pads) |
 | `World/Foreground` | night6 `art/night6/fg_junk/fg_01`…`_17` (parallax FG) |
 | HUD `ChromeTop` / `ChromeMeter` | `art/night2/hud/hud_top.png`, `hud_meter.png` (from the night-2 portrait / sheet) |
 | Health packs | night5 `art/night5/pickups/health_01`…`_03` |
 | Level-up icons | night5 `art/night5/icons/upgrade_01`…`_07` |
 
-Drop replacement PNGs on those paths to reskin. Expected layouts: `art/night6/README.md`, `art/night5/README.md`, `art/night4/README.md`, `art/night3/README.md`. Sheets live in `art/night1/` … `art/night6/sheets/` (`.gdignore`’d).
+Drop replacement PNGs on those paths to reskin. Expected layouts: `art/night7/README.md`, `art/night6/README.md`, `art/night5/README.md`, `art/night4/README.md`, `art/night3/README.md`. Sheets live in `art/night1/` … `art/night7/sheets/` (`.gdignore`’d).
 
 ## Export HTML5 (local)
 
@@ -86,13 +87,12 @@ Local alternative: export to `export/web/`, then upload that folder to any stati
 
 See **[PLAYTEST.md](PLAYTEST.md)** for the click-through against Pete’s notes, the Pages URL, and the Godot open path.
 
-## Changelog vs beat 5
+## Changelog vs beat 6
 
 - **Size locked** at `Art.ACTOR_SCALE` **0.516375**. No further shrink.
-- Early game is **one slow bot** (not dual-side simultaneous). Cadence and speed ramp slowly; 2 live after 8 kills, 3 after 16. Curve is in `PLAYTEST.md`.
-- Base **1 jump**. Landing an attack-dash / jump-dash strike **refreshes** the jump (jump → attack → jump). **EXTRA JUMP** is a level-up path / ascend pick for a true extra air jump.
-- Night6 floor junk (`*_junk_*` + `micro_*`) plus night2 chunks. `World/Foreground` plays `fg_junk/` with a light parallax offset.
-- Health packs, branching level-ups, night5 screw / attack-dash, shake ×0.25 no-stack, pile solidify / raise stay.
+- **Anti-bury:** solidified junk cannot seal Volt (or bots) under a new floor. Actors are lifted to the lid surface.
+- **Night7 sky pads** on `World/Ledges`: one-way (pass from below, stand on top) for player and bots. Random X/Y. Some bots spawn on pads after 3 kills.
+- Health packs drop more often (every **2nd** kill + Warden; magnet every kill). Beat 6 ramp, jump-refresh, EXTRA JUMP, night6 junk / FG stay.
 - HTML5 Pages path unchanged (single-thread Web export). After merge, redeploy via **Actions → Deploy HTML5 to GitHub Pages** on `main`.
 
 ## iOS / Android (later)
