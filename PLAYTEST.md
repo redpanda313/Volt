@@ -31,7 +31,7 @@ Empty taps do nothing. Do not look for a virtual stick or an ATTACK button.
 7. **Distinct Volt travel** — tap-attack = `AttackDash` + night5 `attack_dash_01..06`. Jump-dash = `JumpDash` + screw. Ground swipe = night4 travel on Run/Dash. Three states.
 8. **Bot AI** — after a short approach, bots **chase the player** and **roam** nearby. Scouts lunge. Poppers hop in, then fuse when close (or after ~3.4s). Wardens stomp toward you, then slam.
 9. **Health packs** — `art/night5/pickups/health_01..03.png`. **Rule:** every **3rd kill** drops a pack at the corpse; **every Warden** also drops. Only **one** pack on screen (skip if one is live). Sits on the pile, lasts **10s**, heals **1** (no overheal). Piles do not drop packs. **Medbay** → heal 2. **PACK PULL** → every 2nd kill + magnet.
-10. **Level-up paths** — **5 kills:** ATK UP / HP UP / DASH RANGE (night5 icons 01–03). **11 kills:** a branch ability (SHIELD BREAK, SCREW SPIN, COMBO TIME, MEDBAY, PACK PULL — icons 04–07). Picks change combat (arc, +1 heart, longer dash, 2-damage, farther jump-dash, combo window, pack heal/pull).
+10. **Level-up paths** — **5 kills:** ATK UP / HP UP / DASH RANGE. **11 kills:** a branch ability (SHIELD BREAK, SCREW SPIN, COMBO TIME, MEDBAY, PACK PULL). Icons come from `icons/upgrades_sheet_labeled.png` cells via `Art.upgrade_icon` (the loose `upgrade_*.png` slices are empty frames). Picks change combat (arc, +1 heart, longer dash, 2-damage, farther jump-dash, combo window, pack heal/pull).
 
 Still in: debris pile / solidify / raise, per-type knockback, bot walk/hop on the pile, Scout / Popper / Warden only, portrait 9:16, score + height, game over + restart, Pages-safe single-thread Web export.
 

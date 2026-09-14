@@ -526,13 +526,13 @@ func _run_demo() -> void:
 		bot = _nearest_enemy(volt.global_position + Vector2(140, -40), 640.0)
 	if bot:
 		_launch_at(bot)
-		await get_tree().create_timer(0.32).timeout
+		await get_tree().create_timer(0.06).timeout
 		await _shot("02_launch_attack")
 		await get_tree().create_timer(0.55).timeout
 		await _shot("03_bounce_debris")
-	_dash(Vector2(-0.85, -0.45))
-	await get_tree().create_timer(0.22).timeout
-	await _shot("04_omni_dash")
+	_dash(Vector2(-1.0, 0.0))
+	await get_tree().create_timer(0.08).timeout
+	await _shot("04_ground_dash")
 	var knocker := _nearest_enemy(volt.global_position, 900.0)
 	volt.invuln = 0.0
 	if knocker:
@@ -551,13 +551,27 @@ func _run_demo() -> void:
 	await get_tree().create_timer(0.45).timeout
 	await _shot("06_warden_on_pile")
 	_dash(Vector2(0.15, -1.0))
-	await get_tree().create_timer(0.18).timeout
+	await get_tree().create_timer(0.08).timeout
 	await _shot("07_jump_dash_spin")
 	var lefty := _enemy_scene.instantiate() as Enemy
 	enemies.add_child(lefty)
 	lefty.setup(Enemy.Kind.SCOUT, Vector2(SPAWN_LEFT, pile.playable_y()), 390.0, false)
-	await get_tree().create_timer(0.35).timeout
+	await get_tree().create_timer(0.25).timeout
 	await _shot("08_left_spawn")
+	volt.dashing = false
+	volt.jump_dashing = false
+	volt.global_position = Vector2(VOLT_X, pile.playable_y())
+	volt.velocity = Vector2.ZERO
+	volt._show_idle()
+	_maybe_drop_pack(lefty)
+	if _pack == null:
+		_pack = HealthPack.spawn($World, Vector2(340.0, pile.playable_y() - 28.0), pile.playable_y())
+	await get_tree().create_timer(0.15).timeout
+	await _shot("09_health_pack")
+	_offer_level_up(1)
+	await get_tree().create_timer(0.20, true, false, true).timeout
+	await _shot("10_level_up_icons")
+	get_tree().paused = false
 	if OS.get_environment("VOLT_DEMO_QUIT") == "1":
 		await get_tree().create_timer(0.35).timeout
 		get_tree().quit()

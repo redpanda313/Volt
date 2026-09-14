@@ -234,16 +234,66 @@ func bot_attack_frames(kind_name: String) -> Array[Texture2D]:
 
 
 func health_pack_frames() -> Array[Texture2D]:
-	return sequence_frames(NIGHT5_PICKUPS, ["health_"], 4)
+	var raw := sequence_frames(NIGHT5_PICKUPS, ["health_"], 4)
+	if raw.size() >= 2:
+		var ordered: Array[Texture2D] = []
+		ordered.append(raw[1])
+		if raw.size() >= 3:
+			ordered.append(raw[2])
+		ordered.append(raw[0])
+		return ordered
+	return raw
+
+
+## Labeled sheet cells (1280×720). Individual upgrade_*.png slices are empty frames.
+const UPGRADE_SHEET_RECTS: Array[Rect2i] = [
+	Rect2i(686, 80, 164, 160),
+	Rect2i(886, 80, 164, 160),
+	Rect2i(1086, 80, 164, 160),
+	Rect2i(686, 352, 164, 160),
+	Rect2i(886, 352, 164, 160),
+	Rect2i(1086, 352, 164, 160),
+	Rect2i(392, 196, 200, 200),
+]
+
+var _upgrade_cache: Dictionary = {}
 
 
 func upgrade_icon(index: int) -> Texture2D:
 	if index <= 0:
 		return null
+	if _upgrade_cache.has(index):
+		return _upgrade_cache[index] as Texture2D
+	var from_sheet := _upgrade_from_sheet(index)
+	if from_sheet:
+		_upgrade_cache[index] = from_sheet
+		return from_sheet
 	var path := "%supgrade_%02d.png" % [NIGHT5_ICONS, index]
 	if ResourceLoader.exists(path):
-		return load(path) as Texture2D
+		var tex := load(path) as Texture2D
+		_upgrade_cache[index] = tex
+		return tex
 	return null
+
+
+func _upgrade_from_sheet(index: int) -> Texture2D:
+	if index < 1 or index > UPGRADE_SHEET_RECTS.size():
+		return null
+	var sheet_path := NIGHT5_ICONS + "upgrades_sheet_labeled.png"
+	if not ResourceLoader.exists(sheet_path):
+		return null
+	var sheet := load(sheet_path) as Texture2D
+	if sheet == null:
+		return null
+	var img := sheet.get_image()
+	if img == null:
+		return null
+	var rect: Rect2i = UPGRADE_SHEET_RECTS[index - 1]
+	rect = rect.intersection(Rect2i(0, 0, img.get_width(), img.get_height()))
+	if rect.size.x < 8 or rect.size.y < 8:
+		return null
+	var crop := img.get_region(rect)
+	return ImageTexture.create_from_image(crop)
 
 
 func debris_chunks(kind_name: String) -> Array[Texture2D]:

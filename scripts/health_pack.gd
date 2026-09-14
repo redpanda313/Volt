@@ -26,9 +26,15 @@ func _build() -> void:
 	_sprite.name = "Visual"
 	var frames := Art.health_pack_frames()
 	if not frames.is_empty():
-		Art.fit_animated(_sprite, frames, 56.0, 0.0, &"idle", 6.0, true)
+		Art.fit_animated(_sprite, frames, 88.0, 0.0, &"idle", 5.0, true)
 		_sprite.position = Vector2.ZERO
 	add_child(_sprite)
+	queue_redraw()
+
+
+func _draw() -> void:
+	draw_circle(Vector2.ZERO, 26.0, Color(0.2, 0.92, 1.0, 0.22))
+	draw_circle(Vector2.ZERO, 16.0, Color(0.08, 0.16, 0.22, 0.55))
 
 
 func _process(delta: float) -> void:
