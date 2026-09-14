@@ -160,6 +160,14 @@ func pulse(color: Color, peak_a: float = 0.55, fade: float = 0.18) -> void:
 	tween.tween_property(_pulse, "color:a", 0.0, fade)
 
 
+func clear_fx() -> void:
+	if _pulse:
+		_pulse.color.a = 0.0
+	trauma = 0.0
+	_bloom_flash = 0.0
+	Engine.time_scale = 1.0
+
+
 func damage_pulse() -> void:
 	pulse(Color(1.0, 0.08, 0.16), 0.78, 0.34)
 	add_trauma(1.0)

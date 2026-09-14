@@ -18,6 +18,11 @@ const SPAWN_MIN := 1.20
 const SPAWN_MAX := 2.70
 const SOLO_UNTIL := 8
 const PAIR_UNTIL := 16
+## Beat 7 packs: every 2nd kill (magnet: every kill) + every Warden. Was every 3rd / 2nd.
+const PACK_EVERY := 2
+const PACK_EVERY_MAGNET := 1
+const PLATFORM_SPAWN_AFTER := 3
+const PLATFORM_SPAWN_CHANCE := 0.40
 
 @onready var camera: Camera2D = $Camera2D
 @onready var sky: ClimbSky = $World/Sky
@@ -28,6 +33,7 @@ const PAIR_UNTIL := 16
 @onready var gesture: Gesture = $Gesture
 @onready var juice: Juice = $Juice
 @onready var foreground: ForegroundJunk = $World/Foreground
+@onready var ledges: SkyLedges = $World/Ledges
 
 var _enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
 
@@ -63,6 +69,9 @@ func _ready() -> void:
 	if foreground:
 		foreground.bind_camera(camera)
 	pile.seed_floor()
+	if ledges:
+		ledges.bind_pile(pile)
+		ledges.seed_sky()
 	pile.layer_completed.connect(_on_layer_completed)
 	hud.restart_pressed.connect(_restart)
 	hud.upgrade_picked.connect(_on_upgrade)
@@ -282,34 +291,38 @@ func _on_layer_completed(layer_index: int, playable_y: float) -> void:
 	juice.layer_thump()
 	if is_instance_valid(_ground):
 		_ground.position.y = playable_y + 40.0
-	if volt.global_position.y > playable_y:
-		volt.global_position.y = playable_y
-	for child in enemies.get_children():
-		var bot := child as Enemy
-		if bot and not bot.dead:
-			bot.global_position.y = playable_y
+	## Lift anyone the new floor would seal. Do not yank bots off sky pads.
+	pile.unbury_actors(true)
 
 
 func _spawn_bot() -> void:
 	var bot := _enemy_scene.instantiate() as Enemy
 	enemies.add_child(bot)
 	var kind := _pick_kind()
-	var from_right := randf() < 0.5
-	if enemies.get_child_count() > 1:
-		from_right = not _spawn_right
-	elif randf() < 0.30:
-		from_right = _spawn_right
-	_spawn_right = from_right
-	var spawn_x := SPAWN_RIGHT if from_right else SPAWN_LEFT
-	var stop_x := 330.0 + randf_range(-12.0, 18.0)
-	if not from_right:
-		stop_x = 390.0 + randf_range(-16.0, 16.0)
-	if kind == Enemy.Kind.POPPER:
-		stop_x += 12.0
-	if kind == Enemy.Kind.WARDEN:
-		stop_x = 360.0 if from_right else 400.0
-	var lane_y := pile.surface_y_at(spawn_x)
-	bot.setup(kind, Vector2(spawn_x, lane_y), stop_x, from_right, _spawned)
+	var pad := Vector2.ZERO
+	if kills >= PLATFORM_SPAWN_AFTER and ledges and randf() < PLATFORM_SPAWN_CHANCE:
+		pad = ledges.pick_spawn(pile.playable_y(), camera.position.y)
+	if pad != Vector2.ZERO:
+		var from_right := pad.x >= 360.0
+		_spawn_right = from_right
+		bot.setup(kind, pad, pad.x, from_right, _spawned)
+	else:
+		var from_right := randf() < 0.5
+		if enemies.get_child_count() > 1:
+			from_right = not _spawn_right
+		elif randf() < 0.30:
+			from_right = _spawn_right
+		_spawn_right = from_right
+		var spawn_x := SPAWN_RIGHT if from_right else SPAWN_LEFT
+		var stop_x := 330.0 + randf_range(-12.0, 18.0)
+		if not from_right:
+			stop_x = 390.0 + randf_range(-16.0, 16.0)
+		if kind == Enemy.Kind.POPPER:
+			stop_x += 12.0
+		if kind == Enemy.Kind.WARDEN:
+			stop_x = 360.0 if from_right else 400.0
+		var lane_y := pile.surface_y_at(spawn_x)
+		bot.setup(kind, Vector2(spawn_x, lane_y), stop_x, from_right, _spawned)
 	_spawned += 1
 	bot.exploded.connect(_on_popper_exploded)
 	bot.slammed.connect(_on_warden_slam)
@@ -365,7 +378,7 @@ func _maybe_drop_pack(enemy: Enemy) -> void:
 	if _pack != null and is_instance_valid(_pack):
 		return
 	_kill_drops += 1
-	var every := 2 if volt.pack_magnet else 3
+	var every := PACK_EVERY_MAGNET if volt.pack_magnet else PACK_EVERY
 	var drop := enemy.kind == Enemy.Kind.WARDEN or (_kill_drops % every == 0)
 	if not drop:
 		return
@@ -612,6 +625,7 @@ func _run_demo() -> void:
 		_pack = HealthPack.spawn($World, Vector2(340.0, pile.playable_y() - 28.0), pile.playable_y())
 	await get_tree().create_timer(0.15).timeout
 	await _shot("09_health_pack")
+	await _demo_beat7()
 	_offer_level_up(1)
 	await get_tree().create_timer(0.20, true, false, true).timeout
 	await _shot("10_level_up_icons")
@@ -619,6 +633,44 @@ func _run_demo() -> void:
 	if OS.get_environment("VOLT_DEMO_QUIT") == "1":
 		await get_tree().create_timer(0.35).timeout
 		get_tree().quit()
+
+
+func _demo_beat7() -> void:
+	juice.clear_fx()
+	hud.toast("PADS")
+	var pad: SkyPlatform = null
+	if ledges:
+		for child in ledges.get_children():
+			var p := child as SkyPlatform
+			if p and p.visible:
+				pad = p
+				break
+	if pad:
+		volt.dashing = false
+		volt.jump_dashing = false
+		volt.velocity = Vector2.ZERO
+		volt.global_position = Vector2(pad.global_position.x, pad.stand_y + 90.0)
+		camera.position = Vector2(360.0, pad.stand_y - 40.0)
+		await get_tree().create_timer(0.16).timeout
+		await _shot("11_sky_platforms")
+		volt.velocity = Vector2(0.0, -1100.0)
+		await get_tree().create_timer(0.28).timeout
+		await _shot("12_one_way_from_below")
+		await get_tree().create_timer(0.45).timeout
+		await _shot("13_stand_on_platform")
+	volt.dashing = false
+	volt.jump_dashing = false
+	volt.velocity = Vector2.ZERO
+	volt.global_position = Vector2(400.0, pile.playable_y())
+	camera.position = Vector2(360.0, 640.0)
+	juice.clear_fx()
+	hud.toast("UNBURY")
+	await get_tree().process_frame
+	pile.form_lid_at(volt.global_position, 9)
+	await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().create_timer(0.12).timeout
+	await _shot("14_anti_bury_lift")
 
 
 func _shot(slug: String) -> void:

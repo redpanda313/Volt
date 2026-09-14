@@ -1,5 +1,6 @@
 extends Node
 
+## Night-7 sky one-way platforms.
 ## Night-6 denser debris / micro fill / foreground junk.
 ## Night-5 screw / attack-dash / bot attacks / packs / icons.
 ## Night-4 on-model run/dash. Night-3 idle / attack / hurt + bot walk/hop.
@@ -17,13 +18,22 @@ const NIGHT5_PICKUPS := "res://art/night5/pickups/"
 const NIGHT5_ICONS := "res://art/night5/icons/"
 const NIGHT6_DEBRIS := "res://art/night6/debris/"
 const NIGHT6_FG := "res://art/night6/fg_junk/"
+const NIGHT7_PLATFORMS := "res://art/night7/platforms/"
+const NIGHT7_PLATFORM_FILES: Array[String] = [
+	"01_catwalk.png",
+	"02_tech_slab.png",
+	"03_girder.png",
+	"04_scrap.png",
+	"05_cloud_tech.png",
+	"06_step_pad.png",
+]
 
 const HUD_TOP := "res://art/night2/hud/hud_top.png"
 const HUD_METER := "res://art/night2/hud/hud_meter.png"
 const HUD_PORTRAIT := "res://art/night2/hud/hud_portrait_9x16.png"
 const HUD_SHEET := "res://art/night2/hud/hud_elements_sheet.png"
 
-## Beat 5 set 0.516375. Beat 6 locks size — do not shrink.
+## Beat 5 set 0.516375. Beat 6/7 lock size — do not shrink.
 const ACTOR_SCALE := 0.516375
 
 const VOLT_IDLE := "volt_idle"
@@ -268,6 +278,8 @@ var _n6_micro: Array[Texture2D] = []
 var _n6_micro_ready := false
 var _n6_fg: Array[Texture2D] = []
 var _n6_fg_ready := false
+var _n7_plats: Array[Texture2D] = []
+var _n7_ready := false
 
 
 func upgrade_icon(index: int) -> Texture2D:
@@ -348,6 +360,44 @@ func has_night6_micro() -> bool:
 
 func has_night6_fg() -> bool:
 	return night6_fg_frames().size() >= 8
+
+
+func night7_platform_names() -> Array[String]:
+	var names: Array[String] = []
+	for file_name in NIGHT7_PLATFORM_FILES:
+		names.append(file_name.get_basename())
+	return names
+
+
+func night7_platform_frames() -> Array[Texture2D]:
+	if _n7_ready:
+		return _n7_plats
+	_n7_plats.clear()
+	for file_name in NIGHT7_PLATFORM_FILES:
+		var path := NIGHT7_PLATFORMS + file_name
+		if not ResourceLoader.exists(path):
+			continue
+		var texture := load(path) as Texture2D
+		if texture:
+			_n7_plats.append(texture)
+	_n7_ready = true
+	return _n7_plats
+
+
+func has_night7_platforms() -> bool:
+	return night7_platform_frames().size() >= 6
+
+
+func placeholder_platform_frames() -> Array[Texture2D]:
+	## Readable slab only. Not a Sable frame.
+	var frames: Array[Texture2D] = []
+	var img := Image.create(168, 28, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.18, 0.42, 0.58, 0.92))
+	for x in 168:
+		img.set_pixel(x, 0, Color(0.75, 0.92, 1.0, 1.0))
+		img.set_pixel(x, 1, Color(0.45, 0.78, 0.95, 1.0))
+	frames.append(ImageTexture.create_from_image(img))
+	return frames
 
 
 func _night2_chunks(kind_name: String) -> Array[Texture2D]:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/sky.gd" id="2_sky"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/gesture.gd" id="6_gesture"]
 [ext_resource type="Script" path="res://scripts/fx.gd" id="7_juice"]
 [ext_resource type="Script" path="res://scripts/foreground.gd" id="8_fg"]
+[ext_resource type="Script" path="res://scripts/ledges.gd" id="9_ledges"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -22,6 +23,9 @@ script = ExtResource("2_sky")
 
 [node name="Pile" type="Node2D" parent="World"]
 script = ExtResource("3_pile")
+
+[node name="Ledges" type="Node2D" parent="World"]
+script = ExtResource("9_ledges")
 
 [node name="Volt" parent="World" instance=ExtResource("4_volt")]
 position = Vector2(230, 1000)
