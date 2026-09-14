@@ -7,7 +7,7 @@ func _ready() -> void:
 	var failed := 0
 	failed += _beat8_feel()
 	failed += await _drone_ferry()
-	failed += _all_seven()
+	failed += await _all_seven()
 	if failed > 0:
 		push_error("beat9_runtime failed: %d" % failed)
 		get_tree().quit(1)
