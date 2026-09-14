@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://mc6hgh1oghda"
-path="res://.godot/imported/micro_33.png-1e84a39bca4807684a96ea3166199cec.ctex"
+uid="uid://c6udvd2l8y7ar"
+path="res://.godot/imported/micro_sheet_keyed.png-406decc951a8d68586f20920598f6ebf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/night6/debris/micro/micro_33.png"
-dest_files=["res://.godot/imported/micro_33.png-1e84a39bca4807684a96ea3166199cec.ctex"]
+source_file="res://art/night6/debris/micro/micro_sheet_keyed.png"
+dest_files=["res://.godot/imported/micro_sheet_keyed.png-406decc951a8d68586f20920598f6ebf.ctex"]
 
 [params]
 

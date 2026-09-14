@@ -28,7 +28,7 @@ Empty taps do nothing. Do not look for a virtual stick or an ATTACK button.
 4. **Spawn rate climbs slowly** — still 1-at-a-time at first. Cadence `2.55 × 0.965^kills`, clamped **1.20–2.70s**. During the solo window a kill **resets** that wait (no instant next bot). At **8 kills** a second bot can overlap. At **16** a third. Never 4.
 5. **One jump + attack-refresh** — ground jump (or air swipe) spends the jump. `Volt.refresh_jump()` on strike / rebound. Jump-dash that overlaps a bot also strikes and refreshes. Landing on the floor restores extras only (ground jump is implicit).
 6. **EXTRA JUMP** — level-up path at 5 kills, and an ascend pick if you skipped it. Grants **+1 true air jump** (`volt.extra_jumps`). Attack-refresh still works. Icon: sheet cell 4 (same jump/screw cell as SCREW SPIN).
-7. **Night6 junk** — floor drops night6 `scout/popper/warden_junk_*` plus night2 chunks + `micro_*` fill. `World/Foreground` plays `fg_junk/fg_01..17` as a parallax FG layer. Sheets / keyed atlases / `debris_night2_reuse/` are `.gdignore`’d so Pages stays lean. No invented night6 frames.
+7. **Night6 junk** — floor drops night6 `scout/popper/warden_junk_*` plus night2 chunks + `micro_*` fill. `World/Foreground` plays `fg_junk/fg_01..17` as a parallax FG layer. `sheets/` and `debris_night2_reuse/` are `.gdignore`’d; keyed atlases are Web-export excluded. No invented night6 frames.
 
 Still in: debris pile / solidify / raise, per-type knockback, bot walk/hop on the pile, Scout / Popper / Warden only, night5 anims, health packs, branching level-ups, shake ×0.25 no-stack, portrait 9:16, score + height, game over + restart, Pages-safe single-thread Web export.
 
@@ -67,6 +67,6 @@ art/night6/fg_junk/fg_01.png … fg_17.png
 
 API: `Art.night6_kind_junk`, `Art.night6_micro_frames`, `Art.night6_fg_frames`, `Art.has_night6_junk` / `_micro` / `_fg`. `Art.debris_chunks` = night6 kind junk + night2 chunks.
 
-Atlases (`density_sheet_keyed`, `micro_sheet_keyed`, `fg_sheet_keyed`) and `sheets/` / `debris_night2_reuse/` are ignored for export.
+`sheets/` and `debris_night2_reuse/` are `.gdignore`’d (Godot ignores those whole folders). The three keyed atlases next to the slices are listed in the Web `exclude_filter` so Pages does not pack them twice.
 
 See `art/night6/README.md`. Night5 screw / attack-dash / packs / icons stay. Night2 chunks still drop.

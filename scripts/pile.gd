@@ -50,9 +50,9 @@ func surface_y_at(x: float, search_radius: float = 52.0) -> float:
 
 func seed_floor() -> void:
 	var floor_y := playable_y()
-	var kinds := ["scout", "popper", "warden"]
+	var kinds: Array[String] = ["scout", "popper", "warden"]
 	for i in 8:
-		var kind := kinds[i % 3]
+		var kind: String = kinds[i % 3]
 		var chunks := Art.debris_chunks(kind)
 		if chunks.is_empty():
 			continue

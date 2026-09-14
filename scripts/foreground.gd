@@ -31,7 +31,7 @@ func seed_props(floor_y: float) -> void:
 	var frames := Art.night6_fg_frames()
 	if frames.is_empty():
 		return
-	var spots := [
+	var spots: Array[Vector2] = [
 		Vector2(92.0, floor_y + 30.0),
 		Vector2(628.0, floor_y + 32.0),
 		Vector2(44.0, floor_y + 10.0),
@@ -39,7 +39,7 @@ func seed_props(floor_y: float) -> void:
 		Vector2(118.0, floor_y - 200.0),
 		Vector2(602.0, floor_y - 184.0),
 	]
-	var idxs := [0, 16, 4, 8, 6, 13]
+	var idxs: Array[int] = [0, 16, 4, 8, 6, 13]
 	for i in spots.size():
 		var tex: Texture2D = frames[mini(idxs[i], frames.size() - 1)]
 		_place(tex, spots[i], 1.0)
