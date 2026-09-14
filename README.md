@@ -4,7 +4,7 @@ Portrait **9:16** side-view climb. You are **Volt**. Swipe any direction to dash
 
 **This repo is Godot 4.x 2D only. There is no Unity project, no Narcalid, no Steam target.**
 
-Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-7 sky one-way platforms, night-6 denser junk / micro / FG props, night-5 screw / attack-dash / bot attacks / packs / upgrade icons, night-4 on-model swipe travel, night-3 idle / swing / hurt + bot walk/hop, night-2 debris / HUD, night-1 fallbacks), easy 1-spawn start that ramps slowly, anti-bury pile lift, one jump with attack-refresh chains + EXTRA JUMP, score + height meter, two-step path level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
+Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-7 sky one-way platforms, night-6 denser junk / micro / FG props, night-5 screw / attack-dash / bot attacks / packs / upgrade icons, night-4 on-model swipe travel, night-3 idle / swing / hurt + bot walk/hop, night-2 debris / HUD, night-1 fallbacks), easy 1-spawn start that ramps slowly, anti-bury pile lift, bots **jump** the junk pile, sparse endless pads, one jump with attack-refresh chains + EXTRA JUMP, score + height meter, two-step path level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
 
 ## Play (no Godot install)
 
@@ -87,12 +87,14 @@ Local alternative: export to `export/web/`, then upload that folder to any stati
 
 See **[PLAYTEST.md](PLAYTEST.md)** for the click-through against Pete’s notes, the Pages URL, and the Godot open path.
 
-## Changelog vs beat 6
+## Changelog vs beat 7
 
-- **Size locked** at `Art.ACTOR_SCALE` **0.516375**. No further shrink.
-- **Anti-bury:** solidified junk cannot seal Volt (or bots) under a new floor. Actors are lifted to the lid surface.
-- **Night7 sky pads** on `World/Ledges`: one-way (pass from below, stand on top) for player and bots. Random X/Y. Some bots spawn on pads after 3 kills.
-- Health packs drop more often (every **2nd** kill + Warden; magnet every kill). Beat 6 ramp, jump-refresh, EXTRA JUMP, night6 junk / FG stay.
+- **Camera:** Volt is framed **~15% higher** on the 9:16 view (`CAM_PLAYER_OFFSET = 168`, was 360).
+- **Walkers −25%:** Scout ground walk 215 → **161.25**. Popper / Warden are not walkers.
+- **Jump-climb:** `_stick_to_pile` walk-surf snap is gone. Bots jump onto junk. Anti-bury lift stays.
+- **Sparse endless pads:** night7 frames, 1240–1860px vertical gap, generated as the mountain rises.
+- **No height ceiling:** camera / walls / sky follow the climb; the −1800 camera clamp is gone.
+- Size lock, ramp, night6 junk, jump → attack → jump, EXTRA JUMP, packs, night7 one-way art stay.
 - HTML5 Pages path unchanged (single-thread Web export). After merge, redeploy via **Actions → Deploy HTML5 to GitHub Pages** on `main`.
 
 ## iOS / Android (later)

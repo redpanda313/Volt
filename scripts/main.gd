@@ -23,6 +23,10 @@ const PACK_EVERY := 2
 const PACK_EVERY_MAGNET := 1
 const PLATFORM_SPAWN_AFTER := 3
 const PLATFORM_SPAWN_CHANCE := 0.40
+const VIEW_H := 1280.0
+## Beat 7 sat the player ~78% down the view (`player.y - 360`).
+## Beat 8: raise the player ~15% of the 1280px frame → ~63% down (`360 - 0.15 * 1280`).
+const CAM_PLAYER_OFFSET := 168.0
 
 @onready var camera: Camera2D = $Camera2D
 @onready var sky: ClimbSky = $World/Sky
@@ -48,6 +52,8 @@ var spawn_in: float = SPAWN_FIRST
 var combo_left: float = 0.0
 var combo: int = 0
 var _ground: StaticBody2D
+var _left_wall: StaticBody2D
+var _right_wall: StaticBody2D
 var _pack: HealthPack
 var _kill_drops: int = 0
 var _spawn_right := true
@@ -65,12 +71,14 @@ func _ready() -> void:
 	volt.dashed.connect(_on_volt_dashed)
 	gesture.tapped.connect(_on_tapped)
 	gesture.swiped.connect(_on_swiped)
+	camera.position = Vector2(360.0, pile.playable_y() - CAM_PLAYER_OFFSET)
 	pile.bind_foreground(foreground)
 	if foreground:
 		foreground.bind_camera(camera)
 	pile.seed_floor()
 	if ledges:
 		ledges.bind_pile(pile)
+		ledges.bind_camera(camera)
 		ledges.seed_sky()
 	pile.layer_completed.connect(_on_layer_completed)
 	hud.restart_pressed.connect(_restart)
@@ -80,7 +88,6 @@ func _ready() -> void:
 	hud.set_hp(volt.hp, volt.max_hp)
 	hud.set_climb_level(1)
 	hud.fade_hint()
-	camera.position = Vector2(360, 640)
 	volt.invuln = 0.75
 	if OS.get_environment("VOLT_DEMO") == "1":
 		_run_demo()
@@ -100,11 +107,11 @@ func _build_arena() -> void:
 	gshape.shape = grect
 	_ground.add_child(gshape)
 	$World.add_child(_ground)
-	_add_wall("LeftWall", Vector2(ARENA_LEFT - 20.0, 0.0))
-	_add_wall("RightWall", Vector2(ARENA_RIGHT + 20.0, 0.0))
+	_left_wall = _add_wall("LeftWall", Vector2(ARENA_LEFT - 20.0, 0.0))
+	_right_wall = _add_wall("RightWall", Vector2(ARENA_RIGHT + 20.0, 0.0))
 
 
-func _add_wall(wall_name: String, pos: Vector2) -> void:
+func _add_wall(wall_name: String, pos: Vector2) -> StaticBody2D:
 	var wall := StaticBody2D.new()
 	wall.name = wall_name
 	wall.collision_layer = 0
@@ -113,10 +120,11 @@ func _add_wall(wall_name: String, pos: Vector2) -> void:
 	wall.position = pos
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = Vector2(40, 6000)
+	rect.size = Vector2(40, 28000)
 	shape.shape = rect
 	wall.add_child(shape)
 	$World.add_child(wall)
+	return wall
 
 
 func _process(delta: float) -> void:
@@ -140,11 +148,27 @@ func _physics_process(delta: float) -> void:
 	_follow_camera(delta)
 
 
+func camera_focus_y(volt_y: float, floor_y: float, vel_y: float = 0.0) -> float:
+	## No hard climb cap — follow the mountain as high as it goes.
+	var focus := minf(volt_y - CAM_PLAYER_OFFSET, floor_y - CAM_PLAYER_OFFSET)
+	focus += clampf(vel_y * 0.05, -42.0, 42.0)
+	return focus
+
+
 func _follow_camera(delta: float) -> void:
-	var focus_y := minf(volt.global_position.y - 360.0, pile.playable_y() - 360.0)
-	focus_y += clampf(volt.velocity.y * 0.05, -42.0, 42.0)
-	var target := Vector2(360.0, clampf(focus_y, -1800.0, 640.0))
+	var target := Vector2(360.0, camera_focus_y(volt.global_position.y, pile.playable_y(), volt.velocity.y))
 	camera.position = camera.position.lerp(target, clampf(8.0 * delta, 0.0, 1.0))
+	_sync_climb_bounds()
+	if sky:
+		sky.follow_view(camera.position.y)
+
+
+func _sync_climb_bounds() -> void:
+	var y := camera.position.y
+	if _left_wall:
+		_left_wall.position.y = y
+	if _right_wall:
+		_right_wall.position.y = y
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -626,6 +650,7 @@ func _run_demo() -> void:
 	await get_tree().create_timer(0.15).timeout
 	await _shot("09_health_pack")
 	await _demo_beat7()
+	await _demo_beat8()
 	_offer_level_up(1)
 	await get_tree().create_timer(0.20, true, false, true).timeout
 	await _shot("10_level_up_icons")
@@ -662,7 +687,7 @@ func _demo_beat7() -> void:
 	volt.jump_dashing = false
 	volt.velocity = Vector2.ZERO
 	volt.global_position = Vector2(400.0, pile.playable_y())
-	camera.position = Vector2(360.0, 640.0)
+	camera.position = Vector2(360.0, pile.playable_y() - CAM_PLAYER_OFFSET)
 	juice.clear_fx()
 	hud.toast("UNBURY")
 	await get_tree().process_frame
@@ -671,6 +696,53 @@ func _demo_beat7() -> void:
 	await get_tree().physics_frame
 	await get_tree().create_timer(0.12).timeout
 	await _shot("14_anti_bury_lift")
+
+
+func _demo_beat8() -> void:
+	juice.clear_fx()
+	hud.toast("FRAME")
+	volt.dashing = false
+	volt.jump_dashing = false
+	volt.velocity = Vector2.ZERO
+	volt.global_position = Vector2(VOLT_X, pile.playable_y())
+	camera.position = Vector2(360.0, camera_focus_y(volt.global_position.y, pile.playable_y()))
+	await get_tree().create_timer(0.12).timeout
+	await _shot("15_camera_framing")
+	hud.toast("WALKER")
+	var walker := _enemy_scene.instantiate() as Enemy
+	enemies.add_child(walker)
+	walker.setup(Enemy.Kind.SCOUT, Vector2(SPAWN_RIGHT, pile.playable_y()), 390.0, true, 0)
+	await get_tree().create_timer(0.35).timeout
+	await _shot("16_walker_scout")
+	hud.toast("CLIMB")
+	pile.form_lid_at(Vector2(420.0, pile.playable_y() - 36.0), 8)
+	var climber := _enemy_scene.instantiate() as Enemy
+	enemies.add_child(climber)
+	climber.setup(Enemy.Kind.SCOUT, Vector2(260.0, pile.playable_y()), 500.0, false, 0)
+	await get_tree().create_timer(0.55).timeout
+	await _shot("17_jump_climb")
+	hud.toast("PADS")
+	if ledges:
+		ledges.ensure_ahead()
+		var high: SkyPlatform = null
+		for child in ledges.get_children():
+			var p := child as SkyPlatform
+			if p and p.visible:
+				if high == null or p.stand_y < high.stand_y:
+					high = p
+		if high:
+			camera.position = Vector2(360.0, high.stand_y + 200.0)
+			await get_tree().create_timer(0.16).timeout
+	await _shot("18_sparse_pads")
+	hud.toast("ENDLESS")
+	camera.position = Vector2(360.0, camera_focus_y(-2400.0, -2000.0))
+	if sky:
+		sky.follow_view(camera.position.y)
+	await get_tree().create_timer(0.12).timeout
+	await _shot("19_endless_climb")
+	volt.global_position = Vector2(VOLT_X, pile.playable_y())
+	volt.velocity = Vector2.ZERO
+	camera.position = Vector2(360.0, pile.playable_y() - CAM_PLAYER_OFFSET)
 
 
 func _shot(slug: String) -> void:

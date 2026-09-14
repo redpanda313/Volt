@@ -1,6 +1,6 @@
 extends Node
 
-## Night-7 sky one-way platforms.
+## Night-7 sky one-way platforms (beat 8: sparse endless spawn, same frames).
 ## Night-6 denser debris / micro fill / foreground junk.
 ## Night-5 screw / attack-dash / bot attacks / packs / icons.
 ## Night-4 on-model run/dash. Night-3 idle / attack / hurt + bot walk/hop.

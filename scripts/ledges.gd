@@ -1,62 +1,96 @@
 extends Node2D
 class_name SkyLedges
 
-## Night7 sky pads. Random X/Y in climb bounds. Mountain rise can swallow a pad.
+## Beat 8: night7 pads spawn as the climb rises. Sparse vertical gap so two
+## pads are very unlikely to share a 1280px portrait view.
 
-const COUNT := 12
 const MIN_X := 96.0
 const MAX_X := 624.0
+const MIN_VERT := 1240.0
+const MAX_VERT := 1860.0
+const FIRST_MIN := 640.0
+const FIRST_MAX := 1100.0
+const AHEAD := 2400.0
+const RETIRE_BELOW := 1700.0
+const MAX_LIVE := 6
+const VIEW_H := 1280.0
 
 var _pads: Array[SkyPlatform] = []
 var _pile: RobotPile
+var _camera: Camera2D
 var _rng := RandomNumberGenerator.new()
+var _next_stand_y := 0.0
+var _frame_i := 0
+var _seeded := false
 
 
 func bind_pile(pile: RobotPile) -> void:
 	_pile = pile
 
 
+func bind_camera(cam: Camera2D) -> void:
+	_camera = cam
+
+
 func seed_sky() -> void:
 	_rng.randomize()
+	_pads.clear()
+	_frame_i = 0
+	var floor_y := _floor_y()
+	_next_stand_y = floor_y - _rng.randf_range(FIRST_MIN, FIRST_MAX)
+	_seeded = true
+	_spawn_next()
+	ensure_ahead()
+
+
+func ensure_ahead() -> void:
+	if not _seeded:
+		return
+	var top := _view_top() - AHEAD
+	var guard := 0
+	while _next_stand_y > top and _live_visible() < MAX_LIVE and guard < 8:
+		_spawn_next()
+		guard += 1
+
+
+func _spawn_next() -> void:
+	var floor_y := _floor_y()
+	if _next_stand_y >= floor_y - 48.0:
+		_next_stand_y = floor_y - _rng.randf_range(MIN_VERT, MAX_VERT)
 	var frames := Art.night7_platform_frames()
 	if frames.is_empty():
 		frames = Art.placeholder_platform_frames()
+	if frames.is_empty():
+		_next_stand_y -= _rng.randf_range(MIN_VERT, MAX_VERT)
+		return
 	var names := Art.night7_platform_names()
-	var floor_y := RobotPile.BASE_FLOOR
+	var tex: Texture2D = frames[_frame_i % frames.size()]
+	var kind := names[_frame_i % names.size()] if not names.is_empty() else "pad"
+	var x := _rng.randf_range(MIN_X, MAX_X)
+	var pos := Vector2(x, _next_stand_y)
+	_pads.append(SkyPlatform.spawn(self, tex, pos, kind))
+	_frame_i += 1
+	_next_stand_y -= _rng.randf_range(MIN_VERT, MAX_VERT)
+
+
+func _floor_y() -> float:
 	if _pile:
-		floor_y = _pile.playable_y()
-	## Height bands the play area reaches as the pile lifts.
-	var bands: Array[Vector2] = [
-		Vector2(100.0, 170.0),
-		Vector2(190.0, 280.0),
-		Vector2(300.0, 420.0),
-		Vector2(450.0, 620.0),
-		Vector2(680.0, 900.0),
-	]
-	var placed: Array[Vector2] = []
-	for i in COUNT:
-		var tex: Texture2D = frames[i % frames.size()]
-		var band: Vector2 = bands[i % bands.size()]
-		var pos := _roll_pos(floor_y, band, placed)
-		if pos == Vector2.ZERO:
-			continue
-		placed.append(pos)
-		var kind := names[i % names.size()] if not names.is_empty() else "pad"
-		_pads.append(SkyPlatform.spawn(self, tex, pos, kind))
+		return _pile.playable_y()
+	return RobotPile.BASE_FLOOR
 
 
-func _roll_pos(floor_y: float, band: Vector2, placed: Array[Vector2]) -> Vector2:
-	for _try in 16:
-		var x := _rng.randf_range(MIN_X, MAX_X)
-		var y := floor_y - _rng.randf_range(band.x, band.y)
-		var ok := true
-		for other in placed:
-			if absf(other.x - x) < 118.0 and absf(other.y - y) < 70.0:
-				ok = false
-				break
-		if ok:
-			return Vector2(x, y)
-	return Vector2.ZERO
+func _view_top() -> float:
+	if _camera:
+		return _camera.position.y - VIEW_H * 0.5
+	return _floor_y() - VIEW_H
+
+
+func _live_visible() -> int:
+	var n := 0
+	for pad in _pads:
+		if pad != null and is_instance_valid(pad) and pad.visible:
+			n += 1
+	return n
 
 
 func live_above(floor_y: float) -> Array[SkyPlatform]:
@@ -87,11 +121,32 @@ func pad_count() -> int:
 	return _pads.size()
 
 
+func min_vertical_gap() -> float:
+	return MIN_VERT
+
+
+func live_stand_ys() -> Array[float]:
+	var ys: Array[float] = []
+	for pad in _pads:
+		if pad == null or not is_instance_valid(pad) or not pad.visible:
+			continue
+		ys.append(pad.stand_y)
+	return ys
+
+
 func _physics_process(_delta: float) -> void:
 	if _pile == null:
 		return
 	var floor_y := _pile.playable_y()
+	var cam_y := _camera.position.y if _camera else floor_y
+	var keep: Array[SkyPlatform] = []
 	for pad in _pads:
 		if pad == null or not is_instance_valid(pad):
 			continue
 		pad.set_active(pad.global_position.y < floor_y - 30.0)
+		if not pad.visible or pad.stand_y > cam_y + RETIRE_BELOW:
+			pad.queue_free()
+			continue
+		keep.append(pad)
+	_pads = keep
+	ensure_ahead()

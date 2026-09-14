@@ -4,6 +4,7 @@ class_name RobotPile
 ## Killed bots shatter. Loose top-layer chunks can be dashed; a full layer welds and lifts the floor.
 ## Beat 6: denser night6 junk + micro fill. Foreground props live on ForegroundJunk.
 ## Beat 7: never seal actors under a new floor — lift them to the lid surface.
+## Beat 8: anti-bury stays. Bots must jump to climb junk (no walk-surf snap).
 
 signal layer_completed(layer_index: int, playable_y: float)
 

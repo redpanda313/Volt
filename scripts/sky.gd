@@ -10,14 +10,15 @@ var _backdrop: ColorRect
 var _material: ShaderMaterial
 var _stars: Array[Dictionary] = []
 var _rng := RandomNumberGenerator.new()
+const STAR_SPAN := 4400.0
 
 
 func _ready() -> void:
 	_rng.seed = 13
 	_backdrop = ColorRect.new()
 	_backdrop.name = "Backdrop"
-	_backdrop.size = Vector2(720, 3600)
-	_backdrop.position = Vector2(0, -2200)
+	_backdrop.size = Vector2(720, 4800)
+	_backdrop.position = Vector2(0, -2400)
 	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_backdrop.z_index = -2
 	var shader := load("res://shaders/sky.gdshader") as Shader
@@ -34,6 +35,23 @@ func _ready() -> void:
 			"tw": _rng.randf_range(0.0, TAU),
 		})
 	_apply_height()
+	queue_redraw()
+
+
+func follow_view(cam_y: float) -> void:
+	## Slide the backdrop and wrap stars so the climb has no sky ceiling.
+	if _backdrop:
+		_backdrop.position = Vector2(0.0, cam_y - 2400.0)
+		_backdrop.size = Vector2(720, 4800)
+	var top := cam_y - 2200.0
+	var bot := cam_y + 2200.0
+	for star in _stars:
+		var p: Vector2 = star.pos
+		while p.y < top:
+			p.y += STAR_SPAN
+		while p.y > bot:
+			p.y -= STAR_SPAN
+		star.pos = p
 	queue_redraw()
 
 

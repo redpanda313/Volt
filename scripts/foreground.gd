@@ -8,6 +8,7 @@ const MAX_BITS := 14
 const FIT_H := 168.0
 
 var _cam: Camera2D
+var _rest_cam_y := 832.0
 var _bits: Array[Sprite2D] = []
 
 
@@ -18,13 +19,15 @@ func _ready() -> void:
 
 func bind_camera(cam: Camera2D) -> void:
 	_cam = cam
+	if cam:
+		_rest_cam_y = cam.position.y
 
 
 func _process(_delta: float) -> void:
 	if _cam == null:
 		return
 	position.x = (_cam.position.x - 360.0) * SCROLL
-	position.y = (640.0 - _cam.position.y) * SCROLL
+	position.y = (_rest_cam_y - _cam.position.y) * SCROLL
 
 
 func seed_props(floor_y: float) -> void:
