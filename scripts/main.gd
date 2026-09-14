@@ -636,6 +636,8 @@ func _run_demo() -> void:
 
 
 func _demo_beat7() -> void:
+	juice.clear_fx()
+	hud.toast("PADS")
 	var pad: SkyPlatform = null
 	if ledges:
 		for child in ledges.get_children():
@@ -649,22 +651,25 @@ func _demo_beat7() -> void:
 		volt.velocity = Vector2.ZERO
 		volt.global_position = Vector2(pad.global_position.x, pad.stand_y + 90.0)
 		camera.position = Vector2(360.0, pad.stand_y - 40.0)
-		await get_tree().create_timer(0.12).timeout
+		await get_tree().create_timer(0.16).timeout
 		await _shot("11_sky_platforms")
 		volt.velocity = Vector2(0.0, -1100.0)
 		await get_tree().create_timer(0.28).timeout
 		await _shot("12_one_way_from_below")
-		await get_tree().create_timer(0.40).timeout
+		await get_tree().create_timer(0.45).timeout
 		await _shot("13_stand_on_platform")
 	volt.dashing = false
 	volt.jump_dashing = false
 	volt.velocity = Vector2.ZERO
-	volt.global_position = Vector2(VOLT_X, pile.playable_y())
+	volt.global_position = Vector2(400.0, pile.playable_y())
 	camera.position = Vector2(360.0, 640.0)
+	juice.clear_fx()
+	hud.toast("UNBURY")
 	await get_tree().process_frame
-	pile.form_lid_at(volt.global_position)
+	pile.form_lid_at(volt.global_position, 9)
 	await get_tree().process_frame
 	await get_tree().physics_frame
+	await get_tree().create_timer(0.12).timeout
 	await _shot("14_anti_bury_lift")
 
 

@@ -7,6 +7,7 @@ func _ready() -> void:
 	var failed := 0
 	failed += _bury()
 	failed += _one_way()
+	failed += await _one_way_physics()
 	if failed > 0:
 		push_error("beat7_runtime failed: %d" % failed)
 		get_tree().quit(1)
@@ -45,7 +46,64 @@ func _one_way() -> int:
 	var frames := Art.night7_platform_frames()
 	var tex: Texture2D = frames[0] if not frames.is_empty() else Art.placeholder_platform_frames()[0]
 	var pad := SkyPlatform.spawn(self, tex, Vector2(360.0, 700.0), "01_catwalk")
-	return _expect(pad.is_one_way() and pad.kind_id == "01_catwalk", "night7 pad is one-way")
+	var ok := _expect(pad.is_one_way() and pad.kind_id == "01_catwalk", "night7 pad is one-way")
+	pad.queue_free()
+	return ok
+
+
+func _one_way_physics() -> int:
+	var frames := Art.night7_platform_frames()
+	var tex: Texture2D = frames[5] if frames.size() >= 6 else Art.placeholder_platform_frames()[0]
+	var pad := SkyPlatform.spawn(self, tex, Vector2(160.0, 720.0), "06_step_pad")
+	var volt_scene: PackedScene = load("res://scenes/volt.tscn")
+	var volt: Volt = volt_scene.instantiate()
+	add_child(volt)
+	volt.global_position = Vector2(160.0, 820.0)
+	volt.velocity = Vector2.ZERO
+	await get_tree().physics_frame
+	volt.velocity = Vector2(0.0, -1400.0)
+	var min_y := volt.global_position.y
+	var passed := false
+	for _i in 36:
+		await get_tree().physics_frame
+		min_y = minf(min_y, volt.global_position.y)
+		if volt.global_position.y < pad.stand_y - 8.0:
+			passed = true
+	var failed := 0
+	failed += _expect(passed, "volt passed through pad from below")
+	volt.velocity = Vector2(0.0, 0.0)
+	volt.global_position = Vector2(160.0, pad.stand_y - 80.0)
+	volt.velocity = Vector2(0.0, 400.0)
+	var landed := false
+	for _j in 40:
+		await get_tree().physics_frame
+		if volt.is_on_floor() and absf(volt.global_position.y - pad.stand_y) < 20.0:
+			landed = true
+			break
+	failed += _expect(landed, "volt stands on pad from above")
+	print("  one-way min_y=%.1f stand=%.1f volt_y=%.1f" % [min_y, pad.stand_y, volt.global_position.y])
+	var bot_scene: PackedScene = load("res://scenes/enemy.tscn")
+	var bot: Enemy = bot_scene.instantiate()
+	add_child(bot)
+	bot.setup(Enemy.Kind.SCOUT, Vector2(160.0, 820.0), 160.0, false, 0)
+	bot.velocity = Vector2(0.0, -1400.0)
+	var bot_passed := false
+	for _k in 36:
+		await get_tree().physics_frame
+		if bot.global_position.y < pad.stand_y - 8.0:
+			bot_passed = true
+	failed += _expect(bot_passed, "bot passed through pad from below")
+	bot.velocity = Vector2.ZERO
+	bot.global_position = Vector2(160.0, pad.stand_y - 80.0)
+	bot.velocity = Vector2(0.0, 400.0)
+	var bot_landed := false
+	for _m in 40:
+		await get_tree().physics_frame
+		if bot.is_on_floor() and absf(bot.global_position.y - pad.stand_y) < 24.0:
+			bot_landed = true
+			break
+	failed += _expect(bot_landed, "bot stands on pad from above")
+	return failed
 
 
 func _expect(ok: bool, label: String) -> int:
