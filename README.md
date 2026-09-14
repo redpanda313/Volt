@@ -4,7 +4,7 @@ Portrait **9:16** side-view climb. You are **Volt**. Swipe any direction to dash
 
 **This repo is Godot 4.x 2D only. There is no Unity project, no Narcalid, no Steam target.**
 
-Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-7 sky one-way platforms, night-6 denser junk / micro / FG props, night-5 screw / attack-dash / bot attacks / packs / upgrade icons, night-4 on-model swipe travel, night-3 idle / swing / hurt + bot walk/hop, night-2 debris / HUD, night-1 fallbacks), easy 1-spawn start that ramps slowly, anti-bury pile lift, bots **jump** the junk pile, sparse endless pads, one jump with attack-refresh chains + EXTRA JUMP, score + height meter, two-step path level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
+Tonight’s loop: Volt + Scout / Popper / Warden (Sable night-8 carrier drones + powerup icons when present, night-7 sky one-way platforms, night-6 denser junk / micro / FG props, night-5 screw / attack-dash / bot attacks / packs / upgrade icons, night-4 on-model swipe travel, night-3 idle / swing / hurt + bot walk/hop, night-2 debris / HUD, night-1 fallbacks), easy 1-spawn start that ramps slowly, anti-bury pile lift, bots **jump** the junk pile, sparse endless pads, drones that ferry seven collectibles, one jump with attack-refresh chains + EXTRA JUMP, score + height meter, two-step path level-up, game over + restart. Primary playable path is **HTML5 / GitHub Pages** so anyone can open a URL without installing Godot.
 
 ## Play (no Godot install)
 
@@ -15,6 +15,7 @@ After GitHub Pages is enabled (see below), the jam build is:
 Controls work in the browser:
 
 - **Tap / click an enemy** — Volt dashes all the way to that bot (night5 attack-dash), attacks on contact, then rebounds 20% of that dash up and away. Tap again to chain.
+- **Tap / click a drone** — collect the powerup it is carrying (or walk into it).
 - **Swipe any direction** — short, fast dash. Up / air swipe is a **screw jump-dash** (night5 spin). **One jump** unless a strike refreshes it, or you picked **EXTRA JUMP**. A ground dash knocks loose pile pieces.
 
 On a keyboard: `A`/`D`/`W`/`S` or arrows dash, `Space` launch at the nearest bot, `R` restart after death. No joystick. No on-screen ATTACK button.
@@ -44,8 +45,10 @@ Node names are sprite-swap ready:
 | HUD `ChromeTop` / `ChromeMeter` | `art/night2/hud/hud_top.png`, `hud_meter.png` (from the night-2 portrait / sheet) |
 | Health packs | night5 `art/night5/pickups/health_01`…`_03` |
 | Level-up icons | night5 `art/night5/icons/upgrade_01`…`_07` |
+| Carrier drones | night8 `art/night8/carrier_drone/carrier_01_hover`…`carrier_06_hover_b` (placeholder ferry if missing) |
+| Powerup cargo | night8 `art/night8/powerups/01_bubble_shield`…`07_score_mult` (colored orbs if missing) |
 
-Drop replacement PNGs on those paths to reskin. Expected layouts: `art/night7/README.md`, `art/night6/README.md`, `art/night5/README.md`, `art/night4/README.md`, `art/night3/README.md`. Sheets live in `art/night1/` … `art/night7/sheets/` (`.gdignore`’d).
+Drop replacement PNGs on those paths to reskin. Expected layouts: `art/night8/README.md`, `art/night7/README.md`, `art/night6/README.md`, `art/night5/README.md`, `art/night4/README.md`, `art/night3/README.md`. Sheets live in `art/night1/` … `art/night8/sheets/` (`.gdignore`’d).
 
 ## Export HTML5 (local)
 
@@ -87,14 +90,13 @@ Local alternative: export to `export/web/`, then upload that folder to any stati
 
 See **[PLAYTEST.md](PLAYTEST.md)** for the click-through against Pete’s notes, the Pages URL, and the Godot open path.
 
-## Changelog vs beat 7
+## Changelog vs beat 8
 
-- **Camera:** Volt is framed **~15% higher** on the 9:16 view (`CAM_PLAYER_OFFSET = 168`, was 360).
-- **Walkers −25%:** Scout ground walk 215 → **161.25**. Popper / Warden are not walkers.
-- **Jump-climb:** `_stick_to_pile` walk-surf snap is gone, and anti-bury no longer side-surfs onto adjacent mounds. Bots jump onto junk. True lid unbury stays.
-- **Sparse endless pads:** night7 frames, 1240–1860px vertical gap, generated as the mountain rises.
-- **No height ceiling:** camera / walls / sky follow the climb; the −1800 camera clamp is gone.
-- Size lock, ramp, night6 junk, jump → attack → jump, EXTRA JUMP, packs, night7 one-way art stay.
+- **Drone ferries:** Carriers cross the screen with one of seven powerups. Collect on contact or tap.
+- **Seven effects:** bubble shield, health, stealth, overcharge, magnet, slow field, score ×2. Timed ones have HUD countdowns.
+- **Night8 art hook:** `art/night8/carrier_drone/` + `art/night8/powerups/`. Placeholders if slices are not in the pack yet. No invented Sable frames.
+- **Cadence:** first drone at 5.60s, then ~8.20s (floor 6.40s), one at a time, shuffle bag of all 7.
+- Beat 8 camera / Scout −25% / jump-climb / anti-bury / sparse endless pads / size lock stay.
 - HTML5 Pages path unchanged (single-thread Web export). After merge, redeploy via **Actions → Deploy HTML5 to GitHub Pages** on `main`.
 
 ## iOS / Android (later)

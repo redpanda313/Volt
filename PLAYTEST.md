@@ -1,4 +1,4 @@
-# Playtest — Beat 8 (camera, walkers, jump-climb, sparse pads, endless)
+# Playtest — Beat 9 (drone-carried powerups)
 
 ## Where to play
 
@@ -14,38 +14,61 @@ Local HTML5: `GODOT=godot ./tools/export_web.sh` then `python3 -m http.server 80
 ## Controls (no joystick, no ATTACK button)
 
 - Tap / click **on an enemy** → Volt **dashes all the way** to that bot (night5 `attack_dash` frames). Attack on contact. Rebound is **20% of that dash distance**. Tap another (or the same Warden) to chain.
+- Tap / click **on a drone or its cargo** → collect that powerup. Empty taps still do nothing.
 - Swipe **any direction** on the ground → short travel dash (night4 run/dash).
 - Swipe **up or in the air** → **jump-dash screw spin** (night5 `screw_attack` / `JumpDash`). **Base: 1 jump.** Landing a strike (attack-dash or jump-dash hit) **refreshes that jump** so jump → attack → jump → attack works. No free double-jump until **EXTRA JUMP**.
 - Keyboard: `A`/`D`/`W`/`S` or arrows dash, `Space` strike nearest, `R` restart after death.
 
-Empty taps do nothing. Do not look for a virtual stick or an ATTACK button.
+## Checklist vs Pete’s beat-9 notes
 
-## Checklist vs Pete’s beat-8 notes
+1. **Drones ferry powerups** — A carrier flies left↔right across the 9:16 view with **one** of the seven pickups hanging under it. Night8 `carrier_drone/` + `powerups/` frames when present; otherwise a flat drone body and a colored orb (not Sable).
+2. **Collect on contact / tap** — Touch the drone or cargo, or tap it. Magnet (temp or PACK PULL) widens the grab and pulls the ferry in.
+3. **Readable cadence** — One drone on screen. First ferry at **5.60s**. Then every **8.20s**, easing toward **6.40s** as kills rise (`DRONE_DECAY = 0.985`). A shuffle bag deals all **7** kinds before a repeat, so a normal climb sees each effect. Does not change the beat-6 bot spawn curve.
+4. **All 7 effects** — See table below. Timed ones show a HUD cue under the hearts (`SHIELD 4.2`). Same kind collected again **refreshes** the clock.
+5. **Night8 hook** — `art/night8/carrier_drone/` and `art/night8/powerups/` (plus `sheets/` `.gdignore`, labeled sheet excluded from Web). API: `Art.night8_drone_frames`, `Art.drone_frames`, `Art.powerup_tex`, `Art.has_night8_drones`, `Art.has_night8_powerups`.
+6. **Keep beat 8 feel** — Camera offset **168**, Scout walk **161.25**, jump-climb (no walk-surf), anti-bury, sparse pads, endless climb, size lock `Art.ACTOR_SCALE = 0.516375`. Health-pack drop rule unchanged. Do **not** shrink actors to fit drones.
 
-1. **Camera centering** — Volt sits **~15% higher on screen** in portrait 9:16. Beat 7 used `camera.y = player.y - 360` (player ~78% down a 1280px view). Beat 8 uses `CAM_PLAYER_OFFSET = 168` (`360 - 0.15 * 1280`) so the player sits ~63% down. Same bias vs the pile floor. Verify on a 9:16 window.
-2. **Walkers −25%** — **Scout only** is a normal walker. Ground walk **215 → 161.25**. Walk anim rate scales with it. **Not walkers:** Popper (hop 118), Warden (stomp 54). Those speeds are unchanged.
-3. **CRITICAL jump-climb** — bots **jump** onto rising junk. Walk-forward auto-elevate is gone. Two root causes: (a) `Enemy._stick_to_pile()` snapped Y to `pile.surface_y_at(x)` when a bot walked onto a taller column — **removed**; (b) `seal_surface_y` treated *adjacent* mounds as lids and `unbury_actors` lifted walkers onto them every frame — now a lid must actually sit **over** the body (under the chunk, top above mid-torso). `floor_max_angle` is **28°** so junk is not walked as a ramp. All three kinds use `_try_climb_jump` (Scout / Warden newly jump; Popper’s hop gets a taller climb impulse when a step is ahead, the player is above, or they hit a wall).
-4. **Anti-bury stays** — `RobotPile.unbury_actors` / `lift_out_of_junk` still pops anyone a new lid would **seal**. Never stuck under junk. Able to jump the rest of the way up. Layer-complete still lifts a seal; walking toward a taller mound does **not** teleport them onto it.
-5. **Air pads sparse** — night7 frames reused. Pads spawn as height rises (`SkyLedges.ensure_ahead`). Vertical gap **1240–1860px** (viewport is 1280), so **two pads on screen at once is very unlikely**. Random X in **96–624**. Mountain rise still swallows a pad.
-6. **Endless vertical climb** — no run-ending height cap. Camera no longer clamps at **y = −1800**. Walls / sky backdrop / stars follow the view. Pads keep generating above the camera. Pile layers were already uncapped. HUD climb level is not clamped at 99; height meter grows with the run.
-7. **Keep** — size lock `Art.ACTOR_SCALE = 0.516375`, ramp, night6 junk, jump → attack → jump, EXTRA JUMP, night5/7 art, health packs, level-ups, Volt + Scout / Popper / Warden, portrait 9:16, Pages-safe single-thread Web export.
+## Powerups (beat 9)
 
-## Walkers (document)
-
-| Bot | Locomotion | Beat 8 speed | Counts as walker? |
+| # | Kind | Duration | What to check |
 | --- | --- | --- | --- |
-| **Scout** | ground walk + lunge | **161.25** × ramp (was 215) | **Yes** |
-| Popper | hop | 118 × ramp | No |
-| Warden | stomp | 54 × ramp | No |
+| 1 | **SHIELD** | **5.5s** or until a hit | Cyan bubble on Volt. Next Scout/Popper/Warden contact pops it (`BLOCK`) — no HP loss, no knockback. Expires if unused. |
+| 2 | **HEALTH** | instant | Heals `pack_heal` (1, or 2 with MEDBAY). At full HP: toast `FULL` and **+10** score (× score mult). Night5 pack drop rule still runs on its own. |
+| 3 | **STEALTH** | **5.0s** | Volt fades. Scouts do not lunge, Poppers do not start/continue fuse, Wardens do not slam, contact damage is off. Bots still **walk / hop / jump-climb**. |
+| 4 | **OVERCHARGE** | **6.0s** | Strike damage **+1** (`strike_power`). SHIELD BREAK 2 → 3 while it lasts. HUD `OVERCHARGE`. |
+| 5 | **MAGNET** | **8.0s** | Pulls health packs (same attract as PACK PULL) and nearby drones. Pack drop uses the magnet table (every kill) while it is up. Stacks with the permanent PACK PULL pick. |
+| 6 | **SLOW** | **5.5s** | Bots move and tick attacks at **0.42×**. Gravity / climb jump impulse unchanged so they can still jump junk. Slight blue tint on walkers. |
+| 7 | **SCORE ×2** | **8.0s** | Kill payouts (base + combo) × **2**. HUD `SCORE ×2`. |
 
-Constant: `Enemy.WALKER_SPEED_SCALE = 0.75`, `Enemy.SCOUT_WALK = 215`. `Enemy.is_walker()` is Scout-only.
+Constants live in `scripts/powerup.gd` (`Powerup.SECS`, `Powerup.SLOW_PACE`, `Powerup.SCORE_POWER`). Spawn cadence in `scripts/main.gd`.
+
+## Drone spawn cadence (fits the climb)
+
+| Kills | Next drone wait | What you feel |
+| --- | --- | --- |
+| 0 | first **5.60s**, then **8.20s** | Easy 1v1 Scout is already out. First ferry is a readable cross, not a pile-on. |
+| 8 | ~**7.25s** | First overlaps. Still one drone. |
+| 16 | ~**6.45s** | Late pressure. Floor **6.40s**. |
+| 24+ | **6.40s** | Same floor. Shuffle bag still walks all 7. |
+
+One live drone. Crossing takes ~3.5s at **212 px/s**. Lane sits in the action band (`camera.y + 36…176`, above the pile). Miss it and it leaves; the next bag entry comes on the cadence.
+
+## Beat 8 keep (do not regress)
+
+1. **Camera centering** — `CAM_PLAYER_OFFSET = 168`. Player ~63% down a 1280px 9:16 view.
+2. **Walkers −25%** — Scout **161.25**. Popper 118 / Warden 54 unchanged.
+3. **Jump-climb** — bots jump junk. No `_stick_to_pile`. Lid unbury only when a chunk sits **over** the body.
+4. **Anti-bury stays.**
+5. **Air pads sparse** — 1240–1860px gap, endless generate.
+6. **Endless vertical climb** — no `y = −1800` camera cap.
+7. **Size lock** `Art.ACTOR_SCALE = 0.516375`. Night5/6/7 art, packs, level-ups, Volt + Scout / Popper / Warden, Pages-safe single-thread Web export.
 
 ## Health pack drop rule (unchanged from beat 7)
 
-| | Beat 5/6 | Beat 7/8 |
+| | Beat 5/6 | Beat 7/8/9 |
 | --- | --- | --- |
 | Base | every **3rd** kill | every **2nd** kill |
-| PACK PULL | every **2nd** kill | **every** kill |
+| PACK PULL / temp MAGNET | every **2nd** kill | **every** kill |
 | Warden | always (if no pack out) | always (if no pack out) |
 | Cap | one on screen | one on screen |
 
@@ -62,45 +85,37 @@ Constants: `PACK_EVERY = 2`, `PACK_EVERY_MAGNET = 1` in `scripts/main.gd`.
 | 16 | 3 | ~1.46s | Late pressure. |
 | 24+ | 3 | **1.20s** floor | Fastest cadence. Speed cap 1.70×. |
 
-Per-spawn aggression (index `t`):
-
-- Speed: start Scout **161.25** / Popper 118 / Warden 54, × `(1 + 0.028t)` ≤ 1.70
-- Scout lunge: range `148 + 3.5t` (max 215), cooldown starts ~2.35s → ~1.0s
-- Popper fuse: hunt `5.4 − 0.085t` (min 3.2s) or near `112 + 2.5t`
-- Warden slam CD: `2.85 − 0.055t` (min 1.70s)
-- Attack clip speed: `1.05 + 0.025t` (max 1.50)
-
-## Beat 7 → beat 8 (short)
-
-Size, ramp, junk, anti-bury, jump-refresh, EXTRA JUMP, night7 pad **art** stay. Feel changes: player framed higher, Scouts walk slower, bots **jump** the pile (walk-surf snap gone), pads are sparse and keep coming, climb does not hit a ceiling.
-
-## Night-7 expected paths (unchanged)
+## Night-8 expected paths
 
 ```
-art/night7/platforms/01_catwalk.png
-art/night7/platforms/02_tech_slab.png
-art/night7/platforms/03_girder.png
-art/night7/platforms/04_scrap.png
-art/night7/platforms/05_cloud_tech.png
-art/night7/platforms/06_step_pad.png
+art/night8/carrier_drone/carrier_01_hover.png
+art/night8/carrier_drone/carrier_02_fly_tilt.png
+art/night8/carrier_drone/carrier_03_bank.png
+art/night8/carrier_drone/carrier_04_drop_crate.png
+art/night8/carrier_drone/carrier_05_fly.png
+art/night8/carrier_drone/carrier_06_hover_b.png
+art/night8/powerups/01_bubble_shield.png
+art/night8/powerups/02_health.png
+art/night8/powerups/03_stealth.png
+art/night8/powerups/04_overcharge.png
+art/night8/powerups/05_magnet.png
+art/night8/powerups/06_slow_field.png
+art/night8/powerups/07_score_mult.png
+art/night8/powerups/powerups_sheet_labeled.png
 ```
 
-API: `Art.night7_platform_frames`, `Art.night7_platform_names`, `Art.has_night7_platforms`, `Art.placeholder_platform_frames` (non-Sable fallback only).
-
-`art/night7/sheets/` is `.gdignore`’d. `platforms_sheet_keyed.png` is in the Web `exclude_filter`.
-
-See `art/night7/README.md`. Night6 junk / FG and night5 screw / packs / icons stay.
+See `art/night8/README.md`. Night7 pads, night6 junk / FG, night5 screw / packs / icons stay.
 
 ## Headless check
 
 ```
+godot --headless --path . -s tools/beat9_check.gd
+godot --headless --path . res://tools/beat9_runtime.tscn
+```
+
+Beat 8 scripts remain for regression:
+
+```
 godot --headless --path . -s tools/beat8_check.gd
 godot --headless --path . res://tools/beat8_runtime.tscn
-```
-
-Beat 7 scripts remain for regression:
-
-```
-godot --headless --path . -s tools/beat7_check.gd
-godot --headless --path . res://tools/beat7_runtime.tscn
 ```

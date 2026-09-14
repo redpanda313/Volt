@@ -215,12 +215,28 @@ func _die() -> void:
 	tween.tween_callback(queue_free)
 
 
+func _pace() -> float:
+	var v := _cache_volt()
+	if v and v.has_slow_field():
+		return Powerup.SLOW_PACE
+	return 1.0
+
+
+func _stealthed() -> bool:
+	var v := _cache_volt()
+	return v != null and v.is_stealthed()
+
+
 func _physics_process(delta: float) -> void:
 	if dead:
 		return
 	if flash > 0.0:
 		flash = maxf(0.0, flash - delta)
 		visual.modulate = Color(1.6, 1.6, 1.6) if flash > 0.0 else Color.WHITE
+	elif _pace() < 1.0 and kind != Kind.POPPER:
+		visual.modulate = Color(0.70, 0.84, 1.15)
+	elif kind != Kind.POPPER:
+		visual.modulate = Color.WHITE
 	if contact_cd > 0.0:
 		contact_cd = maxf(0.0, contact_cd - delta)
 	if _climb_cd > 0.0:
@@ -290,18 +306,19 @@ func _cache_volt() -> Volt:
 
 
 func _scout_walk(delta: float) -> void:
+	var pace := _pace()
 	var target := _hunt_x()
 	var dir := signf(target - global_position.x)
 	var v := _cache_volt()
-	if not arriving:
-		lunge_cd -= delta
+	if not arriving and not _stealthed():
+		lunge_cd -= delta * pace
 		if v and lunge_cd <= 0.0 and global_position.distance_to(v.global_position) < _lunge_range:
 			play_attack()
 			lunge_cd = clampf(2.05 - 0.04 * float(threat), 1.05, 2.05)
 			dir = signf(v.global_position.x - global_position.x)
 			if dir == 0.0:
 				dir = -1.0 if from_right else 1.0
-			velocity.x = dir * speed * _lunge_mult
+			velocity.x = dir * speed * _lunge_mult * pace
 			_face(dir)
 			return
 	if absf(global_position.x - target) < 6.0:
@@ -311,7 +328,7 @@ func _scout_walk(delta: float) -> void:
 		if dir == 0.0:
 			dir = -1.0 if from_right else 1.0
 	else:
-		velocity.x = dir * speed
+		velocity.x = dir * speed * pace
 	_face(dir)
 	_bob += 0.55
 	visual.position = _visual_base + Vector2(0.0, sin(_bob) * 3.0)
@@ -320,38 +337,40 @@ func _scout_walk(delta: float) -> void:
 
 
 func _popper_hop() -> void:
+	var pace := _pace()
 	var target := _hunt_x()
 	var dir := signf(target - global_position.x)
 	if dir == 0.0:
 		dir = -1.0 if from_right else 1.0
 	_face(dir)
 	if is_on_floor():
-		hop_cd -= get_physics_process_delta_time()
+		hop_cd -= get_physics_process_delta_time() * pace
 		if hop_cd <= 0.0:
 			velocity.y = hop_impulse
-			velocity.x = dir * speed
+			velocity.x = dir * speed * pace
 			hop_cd = 0.58 if arriving else clampf(0.62 - 0.008 * float(threat), 0.42, 0.62)
 			if not attacking and visual.sprite_frames and visual.sprite_frames.has_animation(&"hop"):
 				visual.play(&"hop")
 		else:
 			velocity.x = move_toward(velocity.x, 0.0, 1400.0 * get_physics_process_delta_time())
 	else:
-		velocity.x = dir * speed * 0.85
+		velocity.x = dir * speed * 0.85 * pace
 
 
 func _warden_stomp(delta: float) -> void:
+	var pace := _pace()
 	var target := _hunt_x()
 	var dir := signf(target - global_position.x)
 	if dir == 0.0:
 		dir = -1.0 if from_right else 1.0
-	step_left -= delta
+	step_left -= delta * pace
 	if step_left <= 0.0:
 		stepping = not stepping
 		step_left = 0.46 if stepping else 0.32
 		if stepping and is_on_floor() and not attacking:
 			visual.scale = _flipped_scale(dir) * Vector2(1.06, 0.9)
 	if stepping:
-		velocity.x = dir * speed
+		velocity.x = dir * speed * pace
 		_face(dir)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, 900.0 * delta)
@@ -364,6 +383,8 @@ func _warden_stomp(delta: float) -> void:
 
 
 func play_attack() -> void:
+	if _stealthed():
+		return
 	attacking = true
 	attack_left = clampf(0.50 - 0.008 * float(threat), 0.34, 0.50)
 	if visual and visual.sprite_frames and visual.sprite_frames.has_animation(&"attack"):
@@ -440,6 +461,8 @@ func _flipped_scale(_dir: float) -> Vector2:
 
 
 func _tick_popper(delta: float) -> void:
+	if _stealthed():
+		return
 	if fuse < 0.0:
 		var v := _cache_volt()
 		var near := v != null and global_position.distance_to(v.global_position) <= _fuse_near
@@ -449,7 +472,7 @@ func _tick_popper(delta: float) -> void:
 			if telegraph:
 				telegraph.visible = true
 		return
-	fuse -= delta
+	fuse -= delta * _pace()
 	var pulse := 1.0 + 0.07 * sin(Time.get_ticks_msec() * 0.028)
 	visual.scale = _flipped_scale(-1.0) * pulse * Vector2(1.08, 0.92)
 	visual.modulate = Color(1.0, 0.72 + 0.28 * (1.0 - clampf(fuse / 1.05, 0.0, 1.0)), 0.55)
@@ -462,7 +485,11 @@ func _tick_popper(delta: float) -> void:
 
 
 func _tick_warden(delta: float) -> void:
-	slam_cd -= delta
+	if _stealthed():
+		if telegraph and not attacking:
+			telegraph.visible = false
+		return
+	slam_cd -= delta * _pace()
 	if slam_cd > 0.35:
 		if telegraph and not attacking:
 			telegraph.visible = false
@@ -479,7 +506,7 @@ func _tick_warden(delta: float) -> void:
 
 
 func can_contact() -> bool:
-	return not dead and contact_cd <= 0.0
+	return not dead and contact_cd <= 0.0 and not _stealthed()
 
 
 func mark_contact() -> void:

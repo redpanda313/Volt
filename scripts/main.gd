@@ -27,6 +27,14 @@ const VIEW_H := 1280.0
 ## Beat 7 sat the player ~78% down the view (`player.y - 360`).
 ## Beat 8: raise the player ~15% of the 1280px frame → ~63% down (`360 - 0.15 * 1280`).
 const CAM_PLAYER_OFFSET := 168.0
+## Beat 9 drones: one ferry at a time. First after the easy open, then a slow cadence.
+const DRONE_FIRST := 5.60
+const DRONE_EVERY := 8.20
+const DRONE_MIN := 6.40
+const DRONE_DECAY := 0.985
+const DRONE_CONTACT := 58.0
+const DRONE_CONTACT_MAGNET := 88.0
+const DRONE_TAP := 78.0
 
 @onready var camera: Camera2D = $Camera2D
 @onready var sky: ClimbSky = $World/Sky
@@ -58,6 +66,9 @@ var _pack: HealthPack
 var _kill_drops: int = 0
 var _spawn_right := true
 var _spawned: int = 0
+var drone_in: float = DRONE_FIRST
+var _drone_from_right := true
+var _power_bag: Array[int] = []
 
 
 func _ready() -> void:
@@ -87,6 +98,7 @@ func _ready() -> void:
 	hud.set_height(0.0)
 	hud.set_hp(volt.hp, volt.max_hp)
 	hud.set_climb_level(1)
+	hud.set_effects([])
 	hud.fade_hint()
 	volt.invuln = 0.75
 	if OS.get_environment("VOLT_DEMO") == "1":
@@ -137,6 +149,7 @@ func _process(delta: float) -> void:
 	if spawn_in <= 0.0 and enemies.get_child_count() < _max_live_bots():
 		_spawn_bot()
 		spawn_in = _next_spawn_delay()
+	_tick_drone_spawn(delta)
 
 
 func _physics_process(delta: float) -> void:
@@ -145,6 +158,8 @@ func _physics_process(delta: float) -> void:
 	_tick_launch_hits()
 	_tick_contacts()
 	_tick_packs(delta)
+	_tick_drones(delta)
+	hud.set_effects(volt.effect_status())
 	_follow_camera(delta)
 
 
@@ -199,6 +214,12 @@ func _on_tapped(screen_pos: Vector2) -> void:
 	if state != State.PLAYING:
 		return
 	var world := _screen_to_world(screen_pos)
+	var drone := _drone_at(world)
+	if drone == null:
+		drone = _nearest_drone(world, DRONE_TAP)
+	if drone:
+		_collect_drone(drone)
+		return
 	var target := _enemy_at(world)
 	if target == null:
 		target = _nearest_enemy(world, 90.0)
@@ -280,7 +301,7 @@ func _strike_on_contact(primary: Enemy) -> void:
 
 
 func _hit_enemy(enemy: Enemy) -> void:
-	var slain := enemy.hurt(volt.strike_damage)
+	var slain := enemy.hurt(volt.strike_power())
 	var chest := enemy.global_position + Vector2(0.0, -enemy.hit_size.y * 0.35)
 	juice.attack_punch(chest)
 	if slain:
@@ -292,6 +313,7 @@ func _on_kill(enemy: Enemy) -> void:
 	combo = combo + 1 if combo_left > 0.0 else 1
 	combo_left = volt.combo_window
 	var gain := enemy.score_value() + int(float(maxi(0, combo - 1) * 2) * volt.combo_score_mult)
+	gain = int(float(gain) * volt.score_mult())
 	score += gain
 	height_m += 14.0 + float(enemy.kind) * 4.0
 	sky.height_t = clampf(height_m / 360.0, 0.0, 1.0)
@@ -392,6 +414,11 @@ func _on_warden_slam(bot: Enemy) -> void:
 func _hurt_volt(bot: Enemy) -> void:
 	if volt.is_invulnerable():
 		return
+	if volt.consume_shield():
+		juice.pickup_flash(volt.global_position + Vector2(0.0, -30.0), Powerup.tint(Powerup.Kind.SHIELD))
+		hud.toast("BLOCK")
+		hud.set_effects(volt.effect_status())
+		return
 	volt.apply_knockback(bot.global_position, bot.knock_speed, bot.knock_lift)
 	volt.take_hit()
 	juice.damage_pulse()
@@ -402,7 +429,7 @@ func _maybe_drop_pack(enemy: Enemy) -> void:
 	if _pack != null and is_instance_valid(_pack):
 		return
 	_kill_drops += 1
-	var every := PACK_EVERY_MAGNET if volt.pack_magnet else PACK_EVERY
+	var every := PACK_EVERY_MAGNET if volt.has_magnet() else PACK_EVERY
 	var drop := enemy.kind == Enemy.Kind.WARDEN or (_kill_drops % every == 0)
 	if not drop:
 		return
@@ -414,11 +441,11 @@ func _tick_packs(delta: float) -> void:
 	if _pack == null or not is_instance_valid(_pack):
 		_pack = null
 		return
-	if volt.pack_magnet:
+	if volt.has_magnet():
 		_pack.attract_toward(volt.global_position, delta)
 	if volt.hp >= volt.max_hp:
 		return
-	var rad := 96.0 if volt.pack_magnet else 50.0
+	var rad := 96.0 if volt.has_magnet() else 50.0
 	if _pack.global_position.distance_to(volt.global_position) <= rad:
 		var gained := volt.heal(volt.pack_heal)
 		if gained > 0:
@@ -426,6 +453,107 @@ func _tick_packs(delta: float) -> void:
 			hud.toast("PACK +%d" % gained)
 			_pack.queue_free()
 			_pack = null
+
+
+func _tick_drone_spawn(delta: float) -> void:
+	drone_in -= delta
+	if drone_in > 0.0:
+		return
+	if _live_drone():
+		drone_in = 0.35
+		return
+	_spawn_drone()
+	drone_in = clampf(DRONE_EVERY * pow(DRONE_DECAY, float(kills)), DRONE_MIN, 10.0)
+
+
+func _next_powerup() -> Powerup.Kind:
+	if _power_bag.is_empty():
+		for i in Powerup.COUNT:
+			_power_bag.append(i)
+		_power_bag.shuffle()
+	return _power_bag.pop_back() as Powerup.Kind
+
+
+func _drone_lane_y() -> float:
+	var cam_y := camera.position.y if camera else volt.global_position.y - CAM_PLAYER_OFFSET
+	var y := cam_y + randf_range(36.0, 176.0)
+	y = minf(y, pile.playable_y() - 80.0)
+	return y
+
+
+func _spawn_drone(kind: Powerup.Kind = Powerup.Kind.SHIELD, forced := false) -> CarrierDrone:
+	if not forced:
+		kind = _next_powerup()
+	var from_right := not _drone_from_right
+	_drone_from_right = from_right
+	return CarrierDrone.spawn($World, kind, from_right, _drone_lane_y())
+
+
+func _live_drone() -> CarrierDrone:
+	for node in get_tree().get_nodes_in_group("drones"):
+		var drone := node as CarrierDrone
+		if drone and is_instance_valid(drone) and not drone.taken:
+			return drone
+	return null
+
+
+func _tick_drones(_delta: float) -> void:
+	for node in get_tree().get_nodes_in_group("drones"):
+		var drone := node as CarrierDrone
+		if drone == null or not is_instance_valid(drone) or drone.taken:
+			continue
+		if volt.has_magnet():
+			drone.attract_toward(volt.global_position, _delta)
+		var rad := DRONE_CONTACT_MAGNET if volt.has_magnet() else DRONE_CONTACT
+		var near := drone.global_position.distance_to(volt.global_position) <= rad
+		near = near or drone.payload_position().distance_to(volt.global_position) <= rad
+		if near:
+			_collect_drone(drone)
+
+
+func _collect_drone(drone: CarrierDrone) -> void:
+	if drone == null or not is_instance_valid(drone) or drone.taken:
+		return
+	var kind := drone.take()
+	var msg := volt.apply_powerup(kind)
+	juice.pickup_flash(drone.payload_position(), Powerup.tint(kind))
+	hud.toast(msg)
+	hud.set_effects(volt.effect_status())
+	if kind == Powerup.Kind.HEALTH and msg == "FULL":
+		var bonus := int(10.0 * volt.score_mult())
+		score += bonus
+		hud.set_score(score)
+		_float_pts(drone.global_position + Vector2(0.0, -40.0), "+%d" % bonus)
+
+
+func _drone_at(world: Vector2) -> CarrierDrone:
+	var best_d := 1.0e9
+	var best_drone: CarrierDrone = null
+	for node in get_tree().get_nodes_in_group("drones"):
+		var drone := node as CarrierDrone
+		if drone == null or not is_instance_valid(drone) or drone.taken:
+			continue
+		if drone.contains_world_point(world):
+			var d := drone.global_position.distance_to(world)
+			if d < best_d:
+				best_d = d
+				best_drone = drone
+	return best_drone
+
+
+func _nearest_drone(world: Vector2, radius: float) -> CarrierDrone:
+	var best_d := radius
+	var best_drone: CarrierDrone = null
+	for node in get_tree().get_nodes_in_group("drones"):
+		var drone := node as CarrierDrone
+		if drone == null or not is_instance_valid(drone) or drone.taken:
+			continue
+		var d := drone.payload_position().distance_to(world)
+		d = minf(d, drone.global_position.distance_to(world))
+		if d < best_d:
+			best_d = d
+			best_drone = drone
+	return best_drone
 
 
 func _maybe_level_up() -> void:
@@ -651,6 +779,7 @@ func _run_demo() -> void:
 	await _shot("09_health_pack")
 	await _demo_beat7()
 	await _demo_beat8()
+	await _demo_beat9()
 	_offer_level_up(1)
 	await get_tree().create_timer(0.20, true, false, true).timeout
 	await _shot("10_level_up_icons")
@@ -762,6 +891,50 @@ func _demo_beat8() -> void:
 		sky.follow_view(camera.position.y)
 	await get_tree().create_timer(0.10).timeout
 	await _shot("19_endless_climb")
+	state = State.PLAYING
+	volt.global_position = Vector2(VOLT_X, pile.playable_y())
+	volt.velocity = Vector2.ZERO
+	volt.invuln = 2.0
+	camera.position = Vector2(360.0, pile.playable_y() - CAM_PLAYER_OFFSET)
+
+
+func _demo_beat9() -> void:
+	juice.clear_fx()
+	hud.hide_modals()
+	state = State.PLAYING
+	volt.invuln = 8.0
+	volt.hp = volt.max_hp
+	hud.set_hp(volt.hp, volt.max_hp)
+	for child in enemies.get_children():
+		child.queue_free()
+	for node in get_tree().get_nodes_in_group("drones"):
+		(node as Node).queue_free()
+	await get_tree().process_frame
+	hud.toast("DRONE")
+	volt.dashing = false
+	volt.jump_dashing = false
+	volt.velocity = Vector2.ZERO
+	volt.global_position = Vector2(VOLT_X, pile.playable_y())
+	camera.position = Vector2(360.0, camera_focus_y(volt.global_position.y, pile.playable_y()))
+	var drone := CarrierDrone.spawn($World, Powerup.Kind.SHIELD, true, volt.global_position.y - 70.0)
+	drone.park_at(Vector2(400.0, volt.global_position.y - 70.0))
+	await get_tree().create_timer(0.14).timeout
+	await _shot("20_drone_carry")
+	_collect_drone(drone)
+	await get_tree().create_timer(0.12).timeout
+	await _shot("21_powerup_collect")
+	volt.apply_powerup(Powerup.Kind.OVERCHARGE)
+	volt.apply_powerup(Powerup.Kind.MAGNET)
+	volt.apply_powerup(Powerup.Kind.SCORE)
+	hud.set_effects(volt.effect_status())
+	hud.toast("STATUS")
+	await get_tree().create_timer(0.12).timeout
+	await _shot("22_status_cues")
+	volt.shield_left = 0.0
+	volt.overcharge_left = 0.0
+	volt.magnet_left = 0.0
+	volt.score_mult_left = 0.0
+	hud.set_effects([])
 	state = State.PLAYING
 	volt.global_position = Vector2(VOLT_X, pile.playable_y())
 	volt.velocity = Vector2.ZERO

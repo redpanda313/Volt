@@ -223,6 +223,13 @@ func slam_burst(world_pos: Vector2) -> void:
 	play("slam")
 
 
+func pickup_flash(world_pos: Vector2, color: Color) -> void:
+	bloom_flash(0.45)
+	halo(world_pos, Color(color.r, color.g, color.b, 0.55), 14.0, 110.0)
+	ring(world_pos, Color(color.r, color.g, color.b, 0.80), 16.0, 120.0)
+	play("pickup")
+
+
 func dash_whoosh() -> void:
 	add_trauma(0.18)
 	punch_zoom(0.018)
@@ -369,6 +376,7 @@ func _build_sfx() -> void:
 	_streams["slam"] = _tone(48.0, 220, 0.95, 0.35, 2.4)
 	_streams["shatter"] = _sweep(1400.0, 280.0, 160, 0.5, 0.55)
 	_streams["layer"] = _sweep(220.0, 640.0, 200, 0.45, 0.05)
+	_streams["pickup"] = _sweep(520.0, 1400.0, 110, 0.48, 0.06)
 
 
 func _tone(freq: float, ms: int, vol: float, noise: float, punch: float) -> AudioStreamWAV:

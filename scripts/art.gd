@@ -1,5 +1,6 @@
 extends Node
 
+## Night-8 carrier drones + powerup icons (placeholders if slices are missing).
 ## Night-7 sky one-way platforms (beat 8: sparse endless spawn, same frames).
 ## Night-6 denser debris / micro fill / foreground junk.
 ## Night-5 screw / attack-dash / bot attacks / packs / icons.
@@ -26,6 +27,25 @@ const NIGHT7_PLATFORM_FILES: Array[String] = [
 	"04_scrap.png",
 	"05_cloud_tech.png",
 	"06_step_pad.png",
+]
+const NIGHT8_DRONES := "res://art/night8/carrier_drone/"
+const NIGHT8_POWERUPS := "res://art/night8/powerups/"
+const NIGHT8_DRONE_FILES: Array[String] = [
+	"carrier_01_hover.png",
+	"carrier_02_fly_tilt.png",
+	"carrier_03_bank.png",
+	"carrier_04_drop_crate.png",
+	"carrier_05_fly.png",
+	"carrier_06_hover_b.png",
+]
+const NIGHT8_POWERUP_FILES: Array[String] = [
+	"01_bubble_shield.png",
+	"02_health.png",
+	"03_stealth.png",
+	"04_overcharge.png",
+	"05_magnet.png",
+	"06_slow_field.png",
+	"07_score_mult.png",
 ]
 
 const HUD_TOP := "res://art/night2/hud/hud_top.png"
@@ -280,6 +300,12 @@ var _n6_fg: Array[Texture2D] = []
 var _n6_fg_ready := false
 var _n7_plats: Array[Texture2D] = []
 var _n7_ready := false
+var _n8_drones: Array[Texture2D] = []
+var _n8_drone_ready := false
+var _n8_power: Array[Texture2D] = []
+var _n8_power_ready := false
+var _ph_drone: Array[Texture2D] = []
+var _ph_power: Array[Texture2D] = []
 
 
 func upgrade_icon(index: int) -> Texture2D:
@@ -398,6 +424,132 @@ func placeholder_platform_frames() -> Array[Texture2D]:
 		img.set_pixel(x, 1, Color(0.45, 0.78, 0.95, 1.0))
 	frames.append(ImageTexture.create_from_image(img))
 	return frames
+
+
+func _named_frames(dir: String, files: Array[String]) -> Array[Texture2D]:
+	var frames: Array[Texture2D] = []
+	for file_name in files:
+		var path := dir + file_name
+		if not ResourceLoader.exists(path):
+			continue
+		var texture := load(path) as Texture2D
+		if texture:
+			frames.append(texture)
+	return frames
+
+
+func night8_drone_frames() -> Array[Texture2D]:
+	if _n8_drone_ready:
+		return _n8_drones
+	_n8_drones = _named_frames(NIGHT8_DRONES, NIGHT8_DRONE_FILES)
+	_n8_drone_ready = true
+	return _n8_drones
+
+
+func night8_drone_fly_frames() -> Array[Texture2D]:
+	var all := night8_drone_frames()
+	var fly: Array[Texture2D] = []
+	if all.size() >= 6:
+		fly.append(all[1])
+		fly.append(all[4])
+		fly.append(all[2])
+		fly.append(all[4])
+		return fly
+	return all
+
+
+func night8_drone_drop_tex() -> Texture2D:
+	var all := night8_drone_frames()
+	if all.size() >= 4:
+		return all[3]
+	return null
+
+
+func has_night8_drones() -> bool:
+	return night8_drone_frames().size() >= 6
+
+
+func drone_frames() -> Array[Texture2D]:
+	var night8 := night8_drone_fly_frames()
+	if not night8.is_empty():
+		return night8
+	return placeholder_drone_frames()
+
+
+func night8_powerup_tex(kind: int) -> Texture2D:
+	if kind < 0 or kind >= NIGHT8_POWERUP_FILES.size():
+		return null
+	if not _n8_power_ready:
+		_n8_power.clear()
+		for file_name in NIGHT8_POWERUP_FILES:
+			var path := NIGHT8_POWERUPS + file_name
+			var texture: Texture2D = null
+			if ResourceLoader.exists(path):
+				texture = load(path) as Texture2D
+			_n8_power.append(texture)
+		_n8_power_ready = true
+	if kind < _n8_power.size():
+		return _n8_power[kind]
+	return null
+
+
+func has_night8_powerups() -> bool:
+	var n := 0
+	for i in NIGHT8_POWERUP_FILES.size():
+		if night8_powerup_tex(i):
+			n += 1
+	return n >= 7
+
+
+func powerup_tex(kind: int) -> Texture2D:
+	var night8 := night8_powerup_tex(kind)
+	if night8:
+		return night8
+	return placeholder_powerup_tex(kind)
+
+
+func placeholder_drone_frames() -> Array[Texture2D]:
+	## Simple ferry body. Not a Sable frame.
+	if not _ph_drone.is_empty():
+		return _ph_drone
+	var img := Image.create(80, 52, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for y in range(10, 38):
+		for x in range(12, 68):
+			var edge := x == 12 or x == 67 or y == 10 or y == 37
+			img.set_pixel(x, y, Color(0.82, 0.88, 0.95, 1.0) if edge else Color(0.22, 0.30, 0.40, 1.0))
+	for x in [28, 50]:
+		img.set_pixel(x, 22, Color(0.35, 0.85, 1.0, 1.0))
+		img.set_pixel(x + 1, 22, Color(0.35, 0.85, 1.0, 1.0))
+	for x in [22, 39, 56]:
+		img.set_pixel(x, 42, Color(0.35, 0.75, 1.0, 1.0))
+		img.set_pixel(x, 43, Color(0.55, 0.88, 1.0, 1.0))
+	_ph_drone.append(ImageTexture.create_from_image(img))
+	return _ph_drone
+
+
+func placeholder_powerup_tex(kind: int) -> Texture2D:
+	## Colored orb only. Not a Sable frame.
+	while _ph_power.size() < Powerup.COUNT:
+		_ph_power.append(null)
+	var idx := clampi(kind, 0, Powerup.COUNT - 1)
+	if _ph_power[idx]:
+		return _ph_power[idx]
+	var tint := Powerup.tint(idx as Powerup.Kind)
+	var img := Image.create(48, 48, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := Vector2(24, 24)
+	for y in 48:
+		for x in 48:
+			var d := Vector2(float(x) + 0.5, float(y) + 0.5).distance_to(c)
+			if d <= 20.0:
+				var u := 1.0 - d / 20.0
+				img.set_pixel(x, y, Color(tint.r, tint.g, tint.b, 0.88 + 0.12 * u))
+			elif d <= 22.0:
+				img.set_pixel(x, y, Color(1.0, 1.0, 1.0, 0.85))
+	img.set_pixel(24, 24, Color(1.0, 1.0, 1.0, 1.0))
+	_ph_power[idx] = ImageTexture.create_from_image(img)
+	return _ph_power[idx]
 
 
 func _night2_chunks(kind_name: String) -> Array[Texture2D]:
