@@ -91,7 +91,7 @@ See **[PLAYTEST.md](PLAYTEST.md)** for the click-through against Pete’s notes,
 
 - **Camera:** Volt is framed **~15% higher** on the 9:16 view (`CAM_PLAYER_OFFSET = 168`, was 360).
 - **Walkers −25%:** Scout ground walk 215 → **161.25**. Popper / Warden are not walkers.
-- **Jump-climb:** `_stick_to_pile` walk-surf snap is gone. Bots jump onto junk. Anti-bury lift stays.
+- **Jump-climb:** `_stick_to_pile` walk-surf snap is gone, and anti-bury no longer side-surfs onto adjacent mounds. Bots jump onto junk. True lid unbury stays.
 - **Sparse endless pads:** night7 frames, 1240–1860px vertical gap, generated as the mountain rises.
 - **No height ceiling:** camera / walls / sky follow the climb; the −1800 camera clamp is gone.
 - Size lock, ramp, night6 junk, jump → attack → jump, EXTRA JUMP, packs, night7 one-way art stay.

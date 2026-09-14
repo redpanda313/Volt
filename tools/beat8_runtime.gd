@@ -68,7 +68,7 @@ func _bury() -> int:
 
 func _camera_and_endless() -> int:
 	var packed: PackedScene = load("res://scenes/main.tscn")
-	var main := packed.instantiate()
+	var main: Node = packed.instantiate()
 	add_child(main)
 	await get_tree().process_frame
 	await get_tree().physics_frame
@@ -78,8 +78,8 @@ func _camera_and_endless() -> int:
 	var screen_t := (640.0 + volt.global_position.y - cam.position.y) / 1280.0
 	var failed := 0
 	failed += _expect(screen_t > 0.58 and screen_t < 0.70, "player ~63% down the view")
-	failed += _expect(is_equal_approx(main.CAM_PLAYER_OFFSET, 168.0), "CAM_PLAYER_OFFSET 168")
-	var high := main.camera_focus_y(-5000.0, -4000.0)
+	failed += _expect(is_equal_approx(main.get("CAM_PLAYER_OFFSET"), 168.0), "CAM_PLAYER_OFFSET 168")
+	var high: float = main.call("camera_focus_y", -5000.0, -4000.0)
 	failed += _expect(high < -1800.0, "camera follows past old -1800 cap")
 	failed += _expect(high < -4100.0, "camera tracks a high floor")
 	print("  camera screen_t=%.3f high_focus=%.1f pile=%.1f cam=%.1f" % [screen_t, high, pile.playable_y(), cam.position.y])
@@ -117,16 +117,17 @@ func _walk_surf_jump() -> int:
 	var snapped := false
 	var jumped := false
 	var max_up := 0.0
-	for _i in 110:
+	for _i in 140:
 		await get_tree().physics_frame
 		var dy := prev_y - bot.global_position.y
 		max_up = maxf(max_up, dy)
-		if bot.velocity.y < -200.0:
+		if bot.velocity.y < -180.0:
 			jumped = true
-		if dy > 30.0 and bot.velocity.y > -80.0:
+		## Teleport onto the mound without a climb jump (walk-surf).
+		if dy > 28.0 and bot.velocity.y > -120.0:
 			snapped = true
 		prev_y = bot.global_position.y
-		if bot.global_position.x >= 400.0 and jumped:
+		if jumped and bot.global_position.y < 980.0:
 			break
 	var failed := 0
 	failed += _expect(not snapped, "no walk-surf Y snap onto mound")

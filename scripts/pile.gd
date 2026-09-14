@@ -53,16 +53,19 @@ func surface_y_at(x: float, search_radius: float = 52.0) -> float:
 
 
 func seal_surface_y(x: float, feet_y: float, head_y: float, half_w: float) -> float:
-	## Highest lid (lowest Y) among floor chunks that would bury this body. INF if none.
+	## Highest lid among chunks the body is *under*. Adjacent mounds are not lids —
+	## walking into a taller column must jump, not auto-surf (beat 8).
 	var seal := INF
+	var mid := (feet_y + head_y) * 0.5
 	for piece in _pieces:
 		if not _is_floor_piece(piece):
 			continue
-		if absf(piece.global_position.x - x) > piece.half_width() + half_w + 2.0:
+		var under := maxf(8.0, piece.half_width() - maxf(4.0, half_w * 0.25))
+		if absf(piece.global_position.x - x) > under:
 			continue
 		var top := piece.top_y()
 		var bot := piece.bottom_y()
-		if top < feet_y - 2.0 and bot > head_y - 26.0:
+		if top < mid and bot > head_y - 26.0:
 			if top < seal:
 				seal = top
 	return seal
