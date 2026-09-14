@@ -56,7 +56,7 @@ API: `Art.health_pack_frames()`. World pickups bob this loop.
 | `upgrade_06` | COMBO TIME |
 | `upgrade_07` | spare (PACK PULL) |
 
-API: `Art.upgrade_icon(1..7)`. Level-up buttons use these.
+API: `Art.upgrade_icon(1..7)`. Level-up buttons use the labeled sheet cells (the individual `upgrade_*.png` slices are empty frames / leftovers). Fallback: `upgrade_0N.png`.
 
 ## Sheets
 
