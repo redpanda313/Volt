@@ -145,7 +145,7 @@ func set_score(value: int) -> void:
 
 
 func set_climb_level(level: int) -> void:
-	_level.text = "%02d" % clampi(level, 1, 99)
+	_level.text = "%02d" % maxi(1, level)
 
 
 func set_height(meters: float) -> void:
@@ -159,6 +159,7 @@ func set_height(meters: float) -> void:
 	elif meters >= 50.0:
 		band = "PEAK"
 	_height.text = "%d m   %s" % [int(meters), band]
+	_meter.max_value = maxf(400.0, meters)
 	_meter.value = meters
 
 

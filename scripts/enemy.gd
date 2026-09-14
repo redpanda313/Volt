@@ -16,6 +16,13 @@ const KIND_SCORE := {
 const GRAVITY := 2100.0
 const MIN_X := 48.0
 const MAX_X := 700.0
+## Beat 8 walkers: Scout only. Popper hops, Warden stomps — not walkers.
+const SCOUT_WALK := 215.0
+const WALKER_SPEED_SCALE := 0.75
+## Jump onto junk / steps. Walking must not auto-elevate (`_stick_to_pile` removed).
+const CLIMB_JUMP := -680.0
+const CLIMB_STEP := 22.0
+const CLIMB_LOOK := 44.0
 
 @onready var visual: AnimatedSprite2D = $Visual
 @onready var telegraph: Node2D = $Telegraph
@@ -58,6 +65,7 @@ var _volt: Volt
 var _base_scale := Vector2.ONE
 var _visual_base := Vector2.ZERO
 var _bob: float = 0.0
+var _climb_cd: float = 0.0
 
 
 func _ready() -> void:
@@ -65,7 +73,8 @@ func _ready() -> void:
 	motion_mode = MOTION_MODE_GROUNDED
 	up_direction = Vector2.UP
 	floor_snap_length = 22.0
-	floor_max_angle = deg_to_rad(70.0)
+	## Tight angle so junk mounds are jumped, not walked as a ramp.
+	floor_max_angle = deg_to_rad(28.0)
 	floor_constant_speed = true
 	collision_layer = 0
 	collision_mask = 0
@@ -84,7 +93,7 @@ func setup(p_kind: Kind, spawn: Vector2, p_stop_x: float, p_from_right: bool = t
 	match kind:
 		Kind.SCOUT:
 			hp = 1
-			speed = 215.0 * ramp
+			speed = SCOUT_WALK * WALKER_SPEED_SCALE * ramp
 			hit_size = Vector2(88, 128)
 			contact_range = 64.0
 			knock_speed = 340.0
@@ -172,6 +181,11 @@ func kind_name() -> String:
 	return "Bot"
 
 
+func is_walker() -> bool:
+	## Normal ground walker. Scout only — not Popper (hop) or Warden (stomp).
+	return kind == Kind.SCOUT
+
+
 func score_value() -> int:
 	return int(KIND_SCORE[kind])
 
@@ -209,6 +223,8 @@ func _physics_process(delta: float) -> void:
 		visual.modulate = Color(1.6, 1.6, 1.6) if flash > 0.0 else Color.WHITE
 	if contact_cd > 0.0:
 		contact_cd = maxf(0.0, contact_cd - delta)
+	if _climb_cd > 0.0:
+		_climb_cd = maxf(0.0, _climb_cd - delta)
 	if attack_left > 0.0:
 		attack_left = maxf(0.0, attack_left - delta)
 		if attack_left <= 0.0 and kind != Kind.POPPER:
@@ -219,9 +235,9 @@ func _physics_process(delta: float) -> void:
 
 	velocity.y += GRAVITY * delta
 	_locomote(delta)
+	_try_climb_jump()
 	move_and_slide()
 	global_position.x = clampf(global_position.x, MIN_X, MAX_X)
-	_stick_to_pile()
 	if arriving:
 		arrive_left -= delta
 		if arrive_left <= 0.0 or absf(global_position.x - stop_x) <= 16.0:
@@ -300,7 +316,7 @@ func _scout_walk(delta: float) -> void:
 	_bob += 0.55
 	visual.position = _visual_base + Vector2(0.0, sin(_bob) * 3.0)
 	if not attacking and visual.sprite_frames and visual.sprite_frames.has_animation(&"walk"):
-		visual.speed_scale = 1.35
+		visual.speed_scale = 1.35 * WALKER_SPEED_SCALE
 
 
 func _popper_hop() -> void:
@@ -381,12 +397,34 @@ func _resume_move_anim() -> void:
 		visual.play(anim)
 
 
-func _stick_to_pile() -> void:
-	if _pile == null:
+func _try_climb_jump() -> void:
+	## Climb junk / steps by jumping only. Do not snap Y to the pile surface.
+	if dead or _climb_cd > 0.0 or not is_on_floor():
 		return
-	var surf := _pile.surface_y_at(global_position.x)
-	if global_position.y > surf + 14.0:
-		global_position.y = surf
+	if not _needs_climb_jump():
+		return
+	var dir := signf(velocity.x)
+	if dir == 0.0:
+		dir = -1.0 if from_right else 1.0
+	velocity.y = CLIMB_JUMP
+	if absf(velocity.x) < speed * 0.35:
+		velocity.x = dir * speed
+	_climb_cd = 0.42
+
+
+func _needs_climb_jump() -> bool:
+	if _pile == null:
+		return is_on_wall()
+	var dir := signf(velocity.x)
+	if dir == 0.0:
+		dir = -1.0 if from_right else 1.0
+	var ahead := _pile.surface_y_at(global_position.x + dir * CLIMB_LOOK, 40.0)
+	if ahead < global_position.y - CLIMB_STEP:
+		return true
+	var v := _cache_volt()
+	if v and v.is_on_floor() and v.global_position.y < global_position.y - 56.0:
+		return true
+	return is_on_wall()
 
 
 func _face(dir: float) -> void:

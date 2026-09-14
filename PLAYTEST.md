@@ -1,4 +1,4 @@
-# Playtest — Beat 7 (anti-bury + night7 sky platforms)
+# Playtest — Beat 8 (camera, walkers, jump-climb, sparse pads, endless)
 
 ## Where to play
 
@@ -20,21 +20,29 @@ Local HTML5: `GODOT=godot ./tools/export_web.sh` then `python3 -m http.server 80
 
 Empty taps do nothing. Do not look for a virtual stick or an ATTACK button.
 
-## Checklist vs Pete’s beat-7 notes
+## Checklist vs Pete’s beat-8 notes
 
-1. **Size locked** — `Art.ACTOR_SCALE = 0.516375` (beat 5). Volt + Scout / Popper / Warden, colliders included. **Do not shrink.**
-2. **Ramp + layered junk stay** — easy 1-spawn start, slow threat/cadence curve, night6 junk + micro + FG. Do not flatten the pile feel.
-3. **ANTI-BURY (highest priority)** — junk must **not** harden into floor on top of the player. If a new solidified debris layer would form over / around Volt and seal them, they are **pushed to the surface** of that lid (`RobotPile.unbury_actors` / `lift_out_of_junk`). Same lift for bots so they are not soft-locked under a weld. Layer-complete no longer yanks everyone to `playable_y` (that would pull bots off sky pads).
-4. **Sky one-way platforms** — short night7 pads float above the floor. Pass **through from below**, **stand on top**. Works for **Volt and bots** (`CollisionShape2D.one_way_collision` on `World/Ledges`).
-5. **Some bots spawn on pads** — after **3 kills**, **40%** of spawns land on a live pad (random pad in camera / play bounds) instead of a floor edge. Early 1-spawn start stays on the floor.
-6. **Random X and Y** — pads roll X in **96–624** and Y in climb bands (about **100–900px** above the current floor) with overlap rejection. Mountain rise can swallow a pad (disabled when the pile reaches it).
-7. **Health packs more often** — beat 5/6 was every **3rd** kill + every Warden (magnet: every **2nd**). Beat 7 is every **2nd** kill + every Warden (magnet: **every** kill). Still **one pack** on screen. See rule below.
-8. **Night7 art wired** — `art/night7/platforms/01_catwalk.png` … `06_step_pad.png` via `Art.night7_platform_frames()`. `sheets/` is `.gdignore`’d. `platforms_sheet_keyed.png` is Web-export excluded. Placeholder slab exists only if those six frames are missing — **no invented Sable frames**.
-9. **Keep** — jump → attack → jump chains, EXTRA JUMP, debris pile / solidify / raise, night5/6 art, portrait 9:16, Pages-safe single-thread Web export.
+1. **Camera centering** — Volt sits **~15% higher on screen** in portrait 9:16. Beat 7 used `camera.y = player.y - 360` (player ~78% down a 1280px view). Beat 8 uses `CAM_PLAYER_OFFSET = 168` (`360 - 0.15 * 1280`) so the player sits ~63% down. Same bias vs the pile floor. Verify on a 9:16 window.
+2. **Walkers −25%** — **Scout only** is a normal walker. Ground walk **215 → 161.25**. Walk anim rate scales with it. **Not walkers:** Popper (hop 118), Warden (stomp 54). Those speeds are unchanged.
+3. **CRITICAL jump-climb** — bots **jump** onto rising junk. Walk-forward auto-elevate is gone. Two root causes: (a) `Enemy._stick_to_pile()` snapped Y to `pile.surface_y_at(x)` when a bot walked onto a taller column — **removed**; (b) `seal_surface_y` treated *adjacent* mounds as lids and `unbury_actors` lifted walkers onto them every frame — now a lid must actually sit **over** the body (under the chunk, top above mid-torso). `floor_max_angle` is **28°** so junk is not walked as a ramp. All three kinds use `_try_climb_jump` (Scout / Warden newly jump; Popper’s hop gets a taller climb impulse when a step is ahead, the player is above, or they hit a wall).
+4. **Anti-bury stays** — `RobotPile.unbury_actors` / `lift_out_of_junk` still pops anyone a new lid would **seal**. Never stuck under junk. Able to jump the rest of the way up. Layer-complete still lifts a seal; walking toward a taller mound does **not** teleport them onto it.
+5. **Air pads sparse** — night7 frames reused. Pads spawn as height rises (`SkyLedges.ensure_ahead`). Vertical gap **1240–1860px** (viewport is 1280), so **two pads on screen at once is very unlikely**. Random X in **96–624**. Mountain rise still swallows a pad.
+6. **Endless vertical climb** — no run-ending height cap. Camera no longer clamps at **y = −1800**. Walls / sky backdrop / stars follow the view. Pads keep generating above the camera. Pile layers were already uncapped. HUD climb level is not clamped at 99; height meter grows with the run.
+7. **Keep** — size lock `Art.ACTOR_SCALE = 0.516375`, ramp, night6 junk, jump → attack → jump, EXTRA JUMP, night5/7 art, health packs, level-ups, Volt + Scout / Popper / Warden, portrait 9:16, Pages-safe single-thread Web export.
 
-## Health pack drop rule (beat 7)
+## Walkers (document)
 
-| | Beat 5/6 | Beat 7 |
+| Bot | Locomotion | Beat 8 speed | Counts as walker? |
+| --- | --- | --- | --- |
+| **Scout** | ground walk + lunge | **161.25** × ramp (was 215) | **Yes** |
+| Popper | hop | 118 × ramp | No |
+| Warden | stomp | 54 × ramp | No |
+
+Constant: `Enemy.WALKER_SPEED_SCALE = 0.75`, `Enemy.SCOUT_WALK = 215`. `Enemy.is_walker()` is Scout-only.
+
+## Health pack drop rule (unchanged from beat 7)
+
+| | Beat 5/6 | Beat 7/8 |
 | --- | --- | --- |
 | Base | every **3rd** kill | every **2nd** kill |
 | PACK PULL | every **2nd** kill | **every** kill |
@@ -47,7 +55,7 @@ Constants: `PACK_EVERY = 2`, `PACK_EVERY_MAGNET = 1` in `scripts/main.gd`.
 
 | Kills | Live bots | Spawn wait (approx) | What you feel |
 | --- | --- | --- | --- |
-| 0 | 1 | first 1.40s, then 2.55s | One slow Scout. Easy to dodge. |
+| 0 | 1 | first 1.40s, then 2.55s | One slower Scout. Easy to dodge. |
 | 3 | 1 | ~2.32s | Poppers can appear. Still 1v1. **Platform spawns can start.** |
 | 7 | 1 | ~2.02s | Warden can roll. Still solo. |
 | 8 | 2 | ~1.95s | First overlap / both edges. |
@@ -56,17 +64,17 @@ Constants: `PACK_EVERY = 2`, `PACK_EVERY_MAGNET = 1` in `scripts/main.gd`.
 
 Per-spawn aggression (index `t`):
 
-- Speed: start Scout 215 / Popper 118 / Warden 54, × `(1 + 0.028t)` ≤ 1.70
+- Speed: start Scout **161.25** / Popper 118 / Warden 54, × `(1 + 0.028t)` ≤ 1.70
 - Scout lunge: range `148 + 3.5t` (max 215), cooldown starts ~2.35s → ~1.0s
 - Popper fuse: hunt `5.4 − 0.085t` (min 3.2s) or near `112 + 2.5t`
 - Warden slam CD: `2.85 − 0.055t` (min 1.70s)
 - Attack clip speed: `1.05 + 0.025t` (max 1.50)
 
-## Beat 6 → beat 7 (short)
+## Beat 7 → beat 8 (short)
 
-Size, ramp, junk, jump-refresh, EXTRA JUMP stay. Critical feel fail: **do not get sealed under a new junk floor** — pop to the lid. Sky one-way pads (night7 art) sit in the climb path; some bots spawn on them. Packs drop more often.
+Size, ramp, junk, anti-bury, jump-refresh, EXTRA JUMP, night7 pad **art** stay. Feel changes: player framed higher, Scouts walk slower, bots **jump** the pile (walk-surf snap gone), pads are sparse and keep coming, climb does not hit a ceiling.
 
-## Night-7 expected paths
+## Night-7 expected paths (unchanged)
 
 ```
 art/night7/platforms/01_catwalk.png
@@ -84,6 +92,13 @@ API: `Art.night7_platform_frames`, `Art.night7_platform_names`, `Art.has_night7_
 See `art/night7/README.md`. Night6 junk / FG and night5 screw / packs / icons stay.
 
 ## Headless check
+
+```
+godot --headless --path . -s tools/beat8_check.gd
+godot --headless --path . res://tools/beat8_runtime.tscn
+```
+
+Beat 7 scripts remain for regression:
 
 ```
 godot --headless --path . -s tools/beat7_check.gd
