@@ -10,6 +10,14 @@ const SPAWN_RIGHT := 662.0
 const SAVE_PATH := "user://volt.cfg"
 const ARENA_LEFT := 8.0
 const ARENA_RIGHT := 712.0
+## Beat 6 spawn curve (also in PLAYTEST.md). Start 1-at-a-time; ramp slowly.
+const SPAWN_FIRST := 1.40
+const SPAWN_START := 2.55
+const SPAWN_DECAY := 0.965
+const SPAWN_MIN := 1.20
+const SPAWN_MAX := 2.70
+const SOLO_UNTIL := 8
+const PAIR_UNTIL := 16
 
 @onready var camera: Camera2D = $Camera2D
 @onready var sky: ClimbSky = $World/Sky
@@ -19,6 +27,7 @@ const ARENA_RIGHT := 712.0
 @onready var hud: HUD = $HUD
 @onready var gesture: Gesture = $Gesture
 @onready var juice: Juice = $Juice
+@onready var foreground: ForegroundJunk = $World/Foreground
 
 var _enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
 
@@ -29,13 +38,14 @@ var height_m: float = 0.0
 var kills: int = 0
 var level_picks: int = 0
 var path_id := ""
-var spawn_in: float = 0.40
+var spawn_in: float = SPAWN_FIRST
 var combo_left: float = 0.0
 var combo: int = 0
 var _ground: StaticBody2D
 var _pack: HealthPack
 var _kill_drops: int = 0
 var _spawn_right := true
+var _spawned: int = 0
 
 
 func _ready() -> void:
@@ -49,6 +59,10 @@ func _ready() -> void:
 	volt.dashed.connect(_on_volt_dashed)
 	gesture.tapped.connect(_on_tapped)
 	gesture.swiped.connect(_on_swiped)
+	pile.bind_foreground(foreground)
+	if foreground:
+		foreground.bind_camera(camera)
+	pile.seed_floor()
 	pile.layer_completed.connect(_on_layer_completed)
 	hud.restart_pressed.connect(_restart)
 	hud.upgrade_picked.connect(_on_upgrade)
@@ -103,10 +117,9 @@ func _process(delta: float) -> void:
 	if combo_left <= 0.0:
 		combo = 0
 	spawn_in -= delta
-	if spawn_in <= 0.0 and enemies.get_child_count() < 4:
+	if spawn_in <= 0.0 and enemies.get_child_count() < _max_live_bots():
 		_spawn_bot()
-		var pace := clampf(1.25 * pow(0.86, float(kills)), 0.70, 1.35)
-		spawn_in = pace
+		spawn_in = _next_spawn_delay()
 
 
 func _physics_process(delta: float) -> void:
@@ -167,8 +180,21 @@ func _on_swiped(direction: Vector2) -> void:
 	_dash(direction)
 
 
+func _max_live_bots() -> int:
+	if kills < SOLO_UNTIL:
+		return 1
+	if kills < PAIR_UNTIL:
+		return 2
+	return 3
+
+
+func _next_spawn_delay() -> float:
+	return clampf(SPAWN_START * pow(SPAWN_DECAY, float(kills)), SPAWN_MIN, SPAWN_MAX)
+
+
 func _dash(direction: Vector2) -> void:
-	volt.apply_dash(direction)
+	if not volt.apply_dash(direction):
+		return
 	juice.dash_whoosh()
 	juice.start_trail(volt.visual, 0.22)
 	hud.toast("DASH")
@@ -193,7 +219,7 @@ func _launch_at(target: Enemy) -> void:
 
 
 func _tick_launch_hits() -> void:
-	if not volt.is_launching():
+	if not volt.is_launching() and not volt.is_jump_dashing():
 		return
 	if volt.seek_bot != null and is_instance_valid(volt.seek_bot) and not volt.seek_bot.dead:
 		if volt.strikes(volt.seek_bot):
@@ -242,6 +268,8 @@ func _on_kill(enemy: Enemy) -> void:
 	juice.kill_burst(enemy.global_position + Vector2(0, -80))
 	_float_pts(enemy.global_position + Vector2(0, -120), "+%d" % gain)
 	_maybe_drop_pack(enemy)
+	if kills < SOLO_UNTIL:
+		spawn_in = maxf(spawn_in, _next_spawn_delay())
 	_maybe_level_up()
 
 
@@ -267,9 +295,11 @@ func _spawn_bot() -> void:
 	enemies.add_child(bot)
 	var kind := _pick_kind()
 	var from_right := randf() < 0.5
-	if randf() < 0.30:
+	if enemies.get_child_count() > 1:
+		from_right = not _spawn_right
+	elif randf() < 0.30:
 		from_right = _spawn_right
-	_spawn_right = not from_right
+	_spawn_right = from_right
 	var spawn_x := SPAWN_RIGHT if from_right else SPAWN_LEFT
 	var stop_x := 330.0 + randf_range(-12.0, 18.0)
 	if not from_right:
@@ -279,20 +309,21 @@ func _spawn_bot() -> void:
 	if kind == Enemy.Kind.WARDEN:
 		stop_x = 360.0 if from_right else 400.0
 	var lane_y := pile.surface_y_at(spawn_x)
-	bot.setup(kind, Vector2(spawn_x, lane_y), stop_x, from_right)
+	bot.setup(kind, Vector2(spawn_x, lane_y), stop_x, from_right, _spawned)
+	_spawned += 1
 	bot.exploded.connect(_on_popper_exploded)
 	bot.slammed.connect(_on_warden_slam)
 
 
 func _pick_kind() -> Enemy.Kind:
-	if kills < 1:
-		return Enemy.Kind.SCOUT
 	if kills < 3:
-		return Enemy.Kind.SCOUT if randf() < 0.55 else Enemy.Kind.POPPER
-	var roll := randf()
-	if roll < 0.48:
 		return Enemy.Kind.SCOUT
-	if roll < 0.78:
+	if kills < 7:
+		return Enemy.Kind.SCOUT if randf() < 0.62 else Enemy.Kind.POPPER
+	var roll := randf()
+	if roll < 0.50:
+		return Enemy.Kind.SCOUT
+	if roll < 0.80:
 		return Enemy.Kind.POPPER
 	return Enemy.Kind.WARDEN
 
@@ -376,6 +407,7 @@ func _offer_level_up(tier: int) -> void:
 			{"id": "atk", "title": "ATK UP", "blurb": "Arc Lash: swings also clip a nearby bot.", "icon": 1},
 			{"id": "hp", "title": "HP UP", "blurb": "+1 max heart. Survive a longer climb.", "icon": 2},
 			{"id": "dash", "title": "DASH RANGE", "blurb": "Afterimage: longer dash and more i-frames.", "icon": 3},
+			{"id": "extra_jump", "title": "EXTRA JUMP", "blurb": "+1 air jump. Strikes still refresh a jump for air chains.", "icon": 4},
 		])
 		return
 	var choices: Array = []
@@ -385,7 +417,7 @@ func _offer_level_up(tier: int) -> void:
 				{"id": "shield", "title": "SHIELD BREAK", "blurb": "Strikes deal 2 damage. Wardens fold faster.", "icon": 5},
 				{"id": "combo", "title": "COMBO TIME", "blurb": "Combo window stretches. Chain payouts grow.", "icon": 6},
 			]
-		"dash":
+		"dash", "jump":
 			choices = [
 				{"id": "screw", "title": "SCREW SPIN", "blurb": "Jump-dash travels farther. Stay in the air.", "icon": 4},
 				{"id": "combo", "title": "COMBO TIME", "blurb": "Combo window stretches. Chain payouts grow.", "icon": 6},
@@ -395,6 +427,13 @@ func _offer_level_up(tier: int) -> void:
 				{"id": "medbay", "title": "MEDBAY", "blurb": "Health packs restore 2 HP.", "icon": 2},
 				{"id": "magnet", "title": "PACK PULL", "blurb": "Packs drop more often and pull toward you.", "icon": 7},
 			]
+	if volt.extra_jumps <= 0:
+		choices.append({
+			"id": "extra_jump",
+			"title": "EXTRA JUMP",
+			"blurb": "+1 true air jump. Attack-refresh chains still work.",
+			"icon": 4,
+		})
 	hud.show_level_up("ASCEND", "Path locked. Unlock an ability.", choices)
 
 
@@ -428,6 +467,11 @@ func _on_upgrade(id: String) -> void:
 		"magnet":
 			volt.pack_magnet = true
 			hud.toast("PACK PULL")
+		"extra_jump":
+			if path_id == "":
+				path_id = "jump"
+			volt.grant_extra_jump(1)
+			hud.toast("EXTRA JUMP")
 		"arc":
 			path_id = "atk"
 			volt.arc_lash = true

@@ -1,5 +1,6 @@
 extends Node
 
+## Night-6 denser debris / micro fill / foreground junk.
 ## Night-5 screw / attack-dash / bot attacks / packs / icons.
 ## Night-4 on-model run/dash. Night-3 idle / attack / hurt + bot walk/hop.
 ## Night-2 debris / HUD. Night-1 fallbacks.
@@ -14,13 +15,15 @@ const NIGHT5_VOLT := "res://art/night5/slices/volt/"
 const NIGHT5_BOTS := "res://art/night5/slices/bots/"
 const NIGHT5_PICKUPS := "res://art/night5/pickups/"
 const NIGHT5_ICONS := "res://art/night5/icons/"
+const NIGHT6_DEBRIS := "res://art/night6/debris/"
+const NIGHT6_FG := "res://art/night6/fg_junk/"
 
 const HUD_TOP := "res://art/night2/hud/hud_top.png"
 const HUD_METER := "res://art/night2/hud/hud_meter.png"
 const HUD_PORTRAIT := "res://art/night2/hud/hud_portrait_9x16.png"
 const HUD_SHEET := "res://art/night2/hud/hud_elements_sheet.png"
 
-## Beat 4 was 0.6885. Beat 5 shrinks ~25% more: 0.6885 * 0.75.
+## Beat 5 set 0.516375. Beat 6 locks size — do not shrink.
 const ACTOR_SCALE := 0.516375
 
 const VOLT_IDLE := "volt_idle"
@@ -257,6 +260,14 @@ const UPGRADE_SHEET_RECTS: Array[Rect2i] = [
 ]
 
 var _upgrade_cache: Dictionary = {}
+var _n6_scout: Array[Texture2D] = []
+var _n6_popper: Array[Texture2D] = []
+var _n6_warden: Array[Texture2D] = []
+var _n6_kind_ready := false
+var _n6_micro: Array[Texture2D] = []
+var _n6_micro_ready := false
+var _n6_fg: Array[Texture2D] = []
+var _n6_fg_ready := false
 
 
 func upgrade_icon(index: int) -> Texture2D:
@@ -296,7 +307,50 @@ func _upgrade_from_sheet(index: int) -> Texture2D:
 	return ImageTexture.create_from_image(crop)
 
 
-func debris_chunks(kind_name: String) -> Array[Texture2D]:
+func night6_kind_junk(kind_name: String) -> Array[Texture2D]:
+	if not _n6_kind_ready:
+		_n6_scout = sequence_frames(NIGHT6_DEBRIS + "scout/", ["scout_junk_", "junk_"], 16)
+		_n6_popper = sequence_frames(NIGHT6_DEBRIS + "popper/", ["popper_junk_", "junk_"], 16)
+		_n6_warden = sequence_frames(NIGHT6_DEBRIS + "warden/", ["warden_junk_", "junk_"], 16)
+		_n6_kind_ready = true
+	match kind_name:
+		"popper":
+			return _n6_popper
+		"warden":
+			return _n6_warden
+		_:
+			return _n6_scout
+
+
+func night6_micro_frames() -> Array[Texture2D]:
+	if _n6_micro_ready:
+		return _n6_micro
+	_n6_micro = sequence_frames(NIGHT6_DEBRIS + "micro/", ["micro_"], 48)
+	_n6_micro_ready = true
+	return _n6_micro
+
+
+func night6_fg_frames() -> Array[Texture2D]:
+	if _n6_fg_ready:
+		return _n6_fg
+	_n6_fg = sequence_frames(NIGHT6_FG, ["fg_"], 17)
+	_n6_fg_ready = true
+	return _n6_fg
+
+
+func has_night6_junk() -> bool:
+	return night6_kind_junk("scout").size() >= 8
+
+
+func has_night6_micro() -> bool:
+	return night6_micro_frames().size() >= 24
+
+
+func has_night6_fg() -> bool:
+	return night6_fg_frames().size() >= 8
+
+
+func _night2_chunks(kind_name: String) -> Array[Texture2D]:
 	var frames: Array[Texture2D] = []
 	for i in range(1, 9):
 		var path := "%s%s/%s_chunk_%02d.png" % [NIGHT2_DEBRIS, kind_name, kind_name, i]
@@ -307,6 +361,16 @@ func debris_chunks(kind_name: String) -> Array[Texture2D]:
 			continue
 		if texture.get_width() * texture.get_height() < 900:
 			continue
+		frames.append(texture)
+	return frames
+
+
+## Night6 kind junk first, then night2 chunks that still read. No invented frames.
+func debris_chunks(kind_name: String) -> Array[Texture2D]:
+	var frames: Array[Texture2D] = []
+	for texture in night6_kind_junk(kind_name):
+		frames.append(texture)
+	for texture in _night2_chunks(kind_name):
 		frames.append(texture)
 	return frames
 
