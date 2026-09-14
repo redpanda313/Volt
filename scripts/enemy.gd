@@ -47,6 +47,12 @@ var roam_cd: float = 0.0
 var lunge_cd: float = 0.40
 var attacking := false
 var attack_left: float = 0.0
+var threat: int = 0
+var _lunge_range := 148.0
+var _lunge_mult := 1.40
+var _fuse_hunt := 5.4
+var _fuse_near := 112.0
+var _atk_scale := 1.05
 var _pile: RobotPile
 var _volt: Volt
 var _base_scale := Vector2.ONE
@@ -66,41 +72,51 @@ func _ready() -> void:
 	_pile = get_tree().get_first_node_in_group("pile") as RobotPile
 
 
-func setup(p_kind: Kind, spawn: Vector2, p_stop_x: float, p_from_right: bool = true) -> void:
+func setup(p_kind: Kind, spawn: Vector2, p_stop_x: float, p_from_right: bool = true, p_threat: int = 0) -> void:
 	kind = p_kind
 	from_right = p_from_right
+	threat = maxi(0, p_threat)
 	global_position = spawn
 	stop_x = p_stop_x
+	var ramp := minf(1.0 + 0.028 * float(threat), 1.70)
 	var s := Art.ACTOR_SCALE
 	match kind:
 		Kind.SCOUT:
 			hp = 1
-			speed = 390.0
+			speed = 215.0 * ramp
 			hit_size = Vector2(88, 128)
-			contact_range = 72.0
+			contact_range = 64.0
 			knock_speed = 340.0
 			knock_lift = -140.0
 			Art.fit_animated(visual, Art.bot_frames("scout"), 198.0 * s, 0.46, &"walk", 12.0, true)
 		Kind.POPPER:
 			hp = 1
-			speed = 210.0
+			speed = 118.0 * ramp
 			hit_size = Vector2(96, 122)
-			contact_range = 92.0
+			contact_range = 82.0
 			knock_speed = 300.0
 			knock_lift = -520.0
-			hop_impulse = -390.0
-			hop_cd = 0.12
+			hop_impulse = -320.0
+			hop_cd = 0.28
 			Art.fit_animated(visual, Art.bot_frames("popper"), 186.0 * s, 0.46, &"hop", 10.0, true)
 		Kind.WARDEN:
 			hp = 3
-			speed = 96.0
+			speed = 54.0 * ramp
 			hit_size = Vector2(110, 152)
-			contact_range = 96.0
+			contact_range = 88.0
 			knock_speed = 640.0
 			knock_lift = -70.0
-			step_left = 0.36
+			step_left = 0.48
 			stepping = true
 			Art.fit_animated(visual, Art.bot_frames("warden"), 236.0 * s, 0.46, &"walk", 6.0, true)
+	_lunge_range = minf(148.0 + 3.5 * float(threat), 215.0)
+	_lunge_mult = minf(1.40 + 0.018 * float(threat), 1.90)
+	_fuse_hunt = maxf(5.4 - 0.085 * float(threat), 3.2)
+	_fuse_near = minf(112.0 + 2.5 * float(threat), 155.0)
+	_atk_scale = minf(1.05 + 0.025 * float(threat), 1.50)
+	lunge_cd = clampf(2.35 - 0.05 * float(threat), 1.00, 2.35)
+	slam_cd = clampf(2.85 - 0.055 * float(threat), 1.70, 2.85)
+	arrive_left = clampf(0.90 - 0.018 * float(threat), 0.42, 0.90)
 	max_hp = hp
 	name = kind_name()
 	_base_scale = visual.scale
@@ -234,8 +250,9 @@ func _hunt_x() -> float:
 	var dist := absf(global_position.x - px)
 	roam_cd -= get_physics_process_delta_time()
 	if roam_cd <= 0.0:
-		roam_x = randf_range(-120.0, 120.0)
-		roam_cd = randf_range(0.45, 1.05)
+		var roam := minf(80.0 + 4.0 * float(threat), 120.0)
+		roam_x = randf_range(-roam, roam)
+		roam_cd = randf_range(0.55, 1.20)
 	if dist > 100.0:
 		return clampf(px, MIN_X + 20.0, MAX_X - 20.0)
 	return clampf(px + roam_x, MIN_X + 20.0, MAX_X - 20.0)
@@ -261,13 +278,13 @@ func _scout_walk(delta: float) -> void:
 	var v := _cache_volt()
 	if not arriving:
 		lunge_cd -= delta
-		if v and lunge_cd <= 0.0 and global_position.distance_to(v.global_position) < 210.0:
+		if v and lunge_cd <= 0.0 and global_position.distance_to(v.global_position) < _lunge_range:
 			play_attack()
-			lunge_cd = 1.15
+			lunge_cd = clampf(2.05 - 0.04 * float(threat), 1.05, 2.05)
 			dir = signf(v.global_position.x - global_position.x)
 			if dir == 0.0:
 				dir = -1.0 if from_right else 1.0
-			velocity.x = dir * speed * 1.9
+			velocity.x = dir * speed * _lunge_mult
 			_face(dir)
 			return
 	if absf(global_position.x - target) < 6.0:
@@ -296,7 +313,7 @@ func _popper_hop() -> void:
 		if hop_cd <= 0.0:
 			velocity.y = hop_impulse
 			velocity.x = dir * speed
-			hop_cd = 0.40 if arriving else 0.42
+			hop_cd = 0.58 if arriving else clampf(0.62 - 0.008 * float(threat), 0.42, 0.62)
 			if not attacking and visual.sprite_frames and visual.sprite_frames.has_animation(&"hop"):
 				visual.play(&"hop")
 		else:
@@ -313,7 +330,7 @@ func _warden_stomp(delta: float) -> void:
 	step_left -= delta
 	if step_left <= 0.0:
 		stepping = not stepping
-		step_left = 0.38 if stepping else 0.26
+		step_left = 0.46 if stepping else 0.32
 		if stepping and is_on_floor() and not attacking:
 			visual.scale = _flipped_scale(dir) * Vector2(1.06, 0.9)
 	if stepping:
@@ -331,10 +348,10 @@ func _warden_stomp(delta: float) -> void:
 
 func play_attack() -> void:
 	attacking = true
-	attack_left = 0.36
+	attack_left = clampf(0.50 - 0.008 * float(threat), 0.34, 0.50)
 	if visual and visual.sprite_frames and visual.sprite_frames.has_animation(&"attack"):
 		visual.play(&"attack")
-		visual.speed_scale = 1.5
+		visual.speed_scale = _atk_scale
 	flash = maxf(flash, 0.08)
 	if telegraph:
 		telegraph.visible = true
@@ -386,8 +403,8 @@ func _flipped_scale(_dir: float) -> Vector2:
 func _tick_popper(delta: float) -> void:
 	if fuse < 0.0:
 		var v := _cache_volt()
-		var near := v != null and global_position.distance_to(v.global_position) <= 150.0
-		if near or hunt_time >= 3.4:
+		var near := v != null and global_position.distance_to(v.global_position) <= _fuse_near
+		if near or hunt_time >= _fuse_hunt:
 			fuse = 1.05
 			play_attack()
 			if telegraph:

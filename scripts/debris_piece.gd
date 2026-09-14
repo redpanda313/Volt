@@ -5,19 +5,20 @@ class_name DebrisPiece
 
 var solid := false
 var settled := false
+var counts_for_layer := true
 var _settle_time := 0.0
 var _sprite: Sprite2D
 
 
-static func spawn(parent: Node, texture: Texture2D, pos: Vector2) -> DebrisPiece:
+static func spawn(parent: Node, texture: Texture2D, pos: Vector2, fit_px: float = 64.0) -> DebrisPiece:
 	var piece := DebrisPiece.new()
 	parent.add_child(piece)
 	piece.global_position = pos
-	piece._build(texture)
+	piece._build(texture, fit_px)
 	return piece
 
 
-func _build(texture: Texture2D) -> void:
+func _build(texture: Texture2D, fit_px: float = 64.0) -> void:
 	collision_layer = 0
 	collision_mask = 0
 	set_collision_layer_value(4, true)
@@ -35,7 +36,7 @@ func _build(texture: Texture2D) -> void:
 	_sprite.centered = true
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	var long_side := maxf(float(texture.get_width()), float(texture.get_height()))
-	var fit := 64.0 / maxf(long_side, 1.0)
+	var fit := fit_px / maxf(long_side, 1.0)
 	_sprite.scale = Vector2(fit, fit)
 	add_child(_sprite)
 	var col := CollisionShape2D.new()
@@ -94,6 +95,10 @@ func _physics_process(delta: float) -> void:
 			_mark_settled()
 	else:
 		_settle_time = 0.0
+
+
+func rest_on_floor() -> void:
+	_mark_settled()
 
 
 func _mark_settled() -> void:

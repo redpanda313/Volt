@@ -67,6 +67,9 @@ var seek_left: float = 0.0
 var rebound_left: float = 0.0
 var rebound_vel: Vector2 = Vector2.ZERO
 var _has_night5_spin := false
+var extra_jumps: int = 0
+var jumps_left: int = 0
+var _was_airborne := false
 
 
 func _ready() -> void:
@@ -170,7 +173,11 @@ func _physics_process(delta: float) -> void:
 	floor_snap_length = 0.0 if launching or dashing or rebound_left > 0.0 else 8.0
 	move_and_slide()
 	global_position.x = clampf(global_position.x, MIN_X, MAX_X)
-	if launching and not seeking and launch_grace <= 0.0 and is_on_floor() and velocity.y >= 0.0:
+	var on_floor := is_on_floor()
+	if on_floor and _was_airborne:
+		jumps_left = extra_jumps
+	_was_airborne = not on_floor
+	if launching and not seeking and launch_grace <= 0.0 and on_floor and velocity.y >= 0.0:
 		launching = false
 		_show_idle()
 
@@ -221,11 +228,37 @@ func is_jump_dashing() -> bool:
 	return jump_dashing
 
 
-func apply_dash(direction: Vector2) -> void:
+func can_jump_dash() -> bool:
+	return is_on_floor() or jumps_left > 0
+
+
+func grant_extra_jump(amount: int = 1) -> void:
+	extra_jumps += amount
+	if not is_on_floor():
+		jumps_left += amount
+
+
+func refresh_jump() -> void:
+	jumps_left = maxi(jumps_left, 1)
+
+
+func _consume_jump() -> void:
+	if is_on_floor():
+		jumps_left = extra_jumps
+	else:
+		jumps_left = maxi(0, jumps_left - 1)
+
+
+func apply_dash(direction: Vector2) -> bool:
 	var dir := direction
 	if dir.length() < 0.12:
 		dir = Vector2(facing, 0.0)
 	dir = dir.normalized()
+	var is_jump := not is_on_floor() or dir.y < JUMP_DASH_Y
+	if is_jump and not can_jump_dash():
+		return false
+	if is_jump:
+		_consume_jump()
 	dash_dir = dir
 	if absf(dir.x) >= 0.08:
 		facing = 1.0 if dir.x >= 0.0 else -1.0
@@ -234,9 +267,10 @@ func apply_dash(direction: Vector2) -> void:
 	dash_speed = DASH_SPEED if is_on_floor() else AIR_DASH_SPEED
 	if long_dodge:
 		dash_speed *= 1.16
-	var is_jump := not is_on_floor() or dir.y < JUMP_DASH_Y
 	if is_jump:
 		secs *= air_dash_mult
+	rebound_left = 0.0
+	rebound_vel = Vector2.ZERO
 	velocity = dir * dash_speed
 	_clear_seek()
 	dashing = true
@@ -251,15 +285,15 @@ func apply_dash(direction: Vector2) -> void:
 		_play_travel_pose()
 	pose_left = secs
 	dashed.emit(dir)
+	return true
 
 
-func apply_dodge(direction: float) -> void:
-	apply_dash(Vector2(direction, 0.0))
+func apply_dodge(direction: float) -> bool:
+	return apply_dash(Vector2(direction, 0.0))
 
 
 func apply_jump() -> bool:
-	apply_dash(Vector2(0.0, -1.0))
-	return true
+	return apply_dash(Vector2(0.0, -1.0))
 
 
 func launch_at_bot(bot: Enemy) -> void:
@@ -316,6 +350,10 @@ func bounce_from(other: Vector2) -> void:
 	rebound_left = secs
 	velocity = rebound_vel
 	_clear_seek()
+	dashing = false
+	jump_dashing = false
+	dodge_left = 0.0
+	refresh_jump()
 	invuln = maxf(invuln, secs + 0.06)
 	_play_attack_pose()
 	pose_left = maxf(0.28, secs)
@@ -340,7 +378,7 @@ func apply_knockback(from: Vector2, force: float, lift: float) -> void:
 
 
 func strikes(bot: Enemy) -> bool:
-	if not launching and not seeking:
+	if not launching and not seeking and not jump_dashing:
 		return false
 	var my_chest := global_position + Vector2(0.0, -36.0)
 	var chest := bot.global_position + Vector2(0.0, -bot.hit_size.y * 0.35)

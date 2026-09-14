@@ -232,11 +232,11 @@ func _build_level_up() -> Control:
 	var wrap := _modal("LEVEL UP", "Pick a path. A second unlock comes later.")
 	var panel := wrap.get_node("Panel") as Panel
 	if panel:
-		panel.position = Vector2(70, 240)
-		panel.size = Vector2(580, 680)
+		panel.position = Vector2(70, 200)
+		panel.size = Vector2(580, 780)
 	var col := wrap.get_node("Panel/VBox") as VBoxContainer
 	if col:
-		col.size = Vector2(524, 620)
+		col.size = Vector2(524, 720)
 	wrap.visible = false
 	return wrap
 
@@ -308,7 +308,7 @@ func _modal(title: String, subtitle: String) -> Control:
 func _choice_button(title: String, blurb: String, id: String, icon: Texture2D = null) -> Button:
 	var button := Button.new()
 	button.text = "%s\n%s" % [title, blurb]
-	button.custom_minimum_size = Vector2(0, 104)
+	button.custom_minimum_size = Vector2(0, 92)
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if icon:
 		button.icon = icon
