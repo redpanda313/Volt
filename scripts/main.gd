@@ -700,6 +700,14 @@ func _demo_beat7() -> void:
 
 func _demo_beat8() -> void:
 	juice.clear_fx()
+	hud.hide_modals()
+	state = State.PLAYING
+	volt.invuln = 8.0
+	volt.hp = volt.max_hp
+	hud.set_hp(volt.hp, volt.max_hp)
+	for child in enemies.get_children():
+		child.queue_free()
+	await get_tree().process_frame
 	hud.toast("FRAME")
 	volt.dashing = false
 	volt.jump_dashing = false
@@ -715,33 +723,49 @@ func _demo_beat8() -> void:
 	await get_tree().create_timer(0.35).timeout
 	await _shot("16_walker_scout")
 	hud.toast("CLIMB")
-	pile.form_lid_at(Vector2(420.0, pile.playable_y() - 36.0), 8)
+	pile.form_lid_at(Vector2(460.0, pile.playable_y() - 40.0), 8)
 	var climber := _enemy_scene.instantiate() as Enemy
 	enemies.add_child(climber)
-	climber.setup(Enemy.Kind.SCOUT, Vector2(260.0, pile.playable_y()), 500.0, false, 0)
-	await get_tree().create_timer(0.55).timeout
+	climber.setup(Enemy.Kind.SCOUT, Vector2(250.0, pile.playable_y()), 520.0, false, 0)
+	var saw_jump := false
+	for _i in 90:
+		await get_tree().physics_frame
+		if is_instance_valid(climber) and climber.velocity.y < -180.0:
+			saw_jump = true
+			break
+	if not saw_jump:
+		await get_tree().create_timer(0.20).timeout
 	await _shot("17_jump_climb")
+	if is_instance_valid(walker):
+		walker.queue_free()
+	if is_instance_valid(climber):
+		climber.queue_free()
 	hud.toast("PADS")
+	state = State.LEVEL_UP
 	if ledges:
 		ledges.ensure_ahead()
-		var high: SkyPlatform = null
+		var shown: SkyPlatform = null
 		for child in ledges.get_children():
 			var p := child as SkyPlatform
 			if p and p.visible:
-				if high == null or p.stand_y < high.stand_y:
-					high = p
-		if high:
-			camera.position = Vector2(360.0, high.stand_y + 200.0)
-			await get_tree().create_timer(0.16).timeout
+				shown = p
+				break
+		if shown:
+			camera.position = Vector2(360.0, shown.stand_y + 80.0)
+			if sky:
+				sky.follow_view(camera.position.y)
+			await get_tree().create_timer(0.10).timeout
 	await _shot("18_sparse_pads")
 	hud.toast("ENDLESS")
 	camera.position = Vector2(360.0, camera_focus_y(-2400.0, -2000.0))
 	if sky:
 		sky.follow_view(camera.position.y)
-	await get_tree().create_timer(0.12).timeout
+	await get_tree().create_timer(0.10).timeout
 	await _shot("19_endless_climb")
+	state = State.PLAYING
 	volt.global_position = Vector2(VOLT_X, pile.playable_y())
 	volt.velocity = Vector2.ZERO
+	volt.invuln = 2.0
 	camera.position = Vector2(360.0, pile.playable_y() - CAM_PLAYER_OFFSET)
 
 
