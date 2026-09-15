@@ -512,18 +512,27 @@ func placeholder_drone_frames() -> Array[Texture2D]:
 	## Simple ferry body. Not a Sable frame.
 	if not _ph_drone.is_empty():
 		return _ph_drone
-	var img := Image.create(80, 52, false, Image.FORMAT_RGBA8)
+	var img := Image.create(88, 64, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
-	for y in range(10, 38):
-		for x in range(12, 68):
-			var edge := x == 12 or x == 67 or y == 10 or y == 37
-			img.set_pixel(x, y, Color(0.82, 0.88, 0.95, 1.0) if edge else Color(0.22, 0.30, 0.40, 1.0))
-	for x in [28, 50]:
-		img.set_pixel(x, 22, Color(0.35, 0.85, 1.0, 1.0))
-		img.set_pixel(x + 1, 22, Color(0.35, 0.85, 1.0, 1.0))
-	for x in [22, 39, 56]:
-		img.set_pixel(x, 42, Color(0.35, 0.75, 1.0, 1.0))
-		img.set_pixel(x, 43, Color(0.55, 0.88, 1.0, 1.0))
+	var body := Vector2(44, 28)
+	for y in 64:
+		for x in 88:
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			var d := Vector2((p.x - body.x) / 28.0, (p.y - body.y) / 16.0).length()
+			if d <= 1.0:
+				var rim := d > 0.86
+				img.set_pixel(x, y, Color(0.82, 0.92, 1.0, 1.0) if rim else Color(0.32, 0.42, 0.55, 1.0))
+			elif p.y >= 42.0 and p.y <= 52.0 and absf(p.x - 44.0) <= 3.0:
+				img.set_pixel(x, y, Color(0.55, 0.82, 1.0, 0.85))
+	for eye in [Vector2(34, 26), Vector2(54, 26)]:
+		for y in range(int(eye.y) - 2, int(eye.y) + 3):
+			for x in range(int(eye.x) - 2, int(eye.x) + 3):
+				if Vector2(x, y).distance_to(eye) <= 2.2:
+					img.set_pixel(x, y, Color(0.30, 0.90, 1.0, 1.0))
+	for jet in [20, 44, 68]:
+		img.set_pixel(jet, 48, Color(0.35, 0.80, 1.0, 1.0))
+		img.set_pixel(jet, 49, Color(0.55, 0.92, 1.0, 1.0))
+		img.set_pixel(jet, 50, Color(0.85, 0.96, 1.0, 1.0))
 	_ph_drone.append(ImageTexture.create_from_image(img))
 	return _ph_drone
 

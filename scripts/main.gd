@@ -916,8 +916,8 @@ func _demo_beat9() -> void:
 	volt.velocity = Vector2.ZERO
 	volt.global_position = Vector2(VOLT_X, pile.playable_y())
 	camera.position = Vector2(360.0, camera_focus_y(volt.global_position.y, pile.playable_y()))
-	var drone := CarrierDrone.spawn($World, Powerup.Kind.SHIELD, true, volt.global_position.y - 70.0)
-	drone.park_at(Vector2(400.0, volt.global_position.y - 70.0))
+	var drone := CarrierDrone.spawn($World, Powerup.Kind.SHIELD, true, volt.global_position.y - 160.0)
+	drone.park_at(Vector2(400.0, volt.global_position.y - 160.0))
 	await get_tree().create_timer(0.14).timeout
 	await _shot("20_drone_carry")
 	_collect_drone(drone)

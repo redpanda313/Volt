@@ -124,8 +124,8 @@ func _build() -> void:
 
 	_effects = VBoxContainer.new()
 	_effects.name = "Effects"
-	_effects.position = Vector2(400, 128)
-	_effects.size = Vector2(300, 130)
+	_effects.position = Vector2(488, 126)
+	_effects.size = Vector2(216, 140)
 	_effects.add_theme_constant_override("separation", 1)
 	_effects.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_effects)
@@ -209,6 +209,8 @@ func set_effects(rows: Array) -> void:
 			lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_effects.add_child(lab)
 		lab.text = "%s  %.1f" % [str(d.get("title", "")), float(d.get("left", 0.0))]
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		lab.size = Vector2(216, 20)
 		lab.add_theme_color_override("font_color", d.get("color", Color(0.8, 0.95, 1.0)))
 		lab.visible = true
 		i += 1
