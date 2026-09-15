@@ -4,6 +4,7 @@ class_name Volt
 signal died
 signal hp_changed(current: int, maximum: int)
 signal dashed(direction: Vector2)
+signal effects_changed
 
 const MAX_HP := 3
 ## Beat 3 was 2100 / 1100. Faster start + higher terminal.
@@ -70,6 +71,12 @@ var _has_night5_spin := false
 var extra_jumps: int = 0
 var jumps_left: int = 0
 var _was_airborne := false
+var shield_left: float = 0.0
+var stealth_left: float = 0.0
+var overcharge_left: float = 0.0
+var magnet_left: float = 0.0
+var slow_left: float = 0.0
+var score_mult_left: float = 0.0
 
 
 func _ready() -> void:
@@ -126,11 +133,10 @@ func _apply_art() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_tick_powerups(delta)
 	if invuln > 0.0:
 		invuln = maxf(0.0, invuln - delta)
-		modulate.a = 0.55 + 0.45 * absf(sin(Time.get_ticks_msec() * 0.02))
-	else:
-		modulate.a = 1.0
+	_paint_status()
 	if pose_left > 0.0:
 		pose_left = maxf(0.0, pose_left - delta)
 		if pose_left <= 0.0 and not launching and not dashing and rebound_left <= 0.0:
@@ -214,6 +220,137 @@ func _bot_chest(bot: Enemy) -> Vector2:
 
 func is_invulnerable() -> bool:
 	return invuln > 0.0
+
+
+func _tick_powerups(delta: float) -> void:
+	var before := _effect_signature()
+	shield_left = maxf(0.0, shield_left - delta)
+	stealth_left = maxf(0.0, stealth_left - delta)
+	overcharge_left = maxf(0.0, overcharge_left - delta)
+	magnet_left = maxf(0.0, magnet_left - delta)
+	slow_left = maxf(0.0, slow_left - delta)
+	score_mult_left = maxf(0.0, score_mult_left - delta)
+	if shield_left > 0.0:
+		queue_redraw()
+	if before != _effect_signature():
+		effects_changed.emit()
+
+
+func _effect_signature() -> int:
+	var bits := 0
+	if shield_left > 0.0:
+		bits |= 1
+	if stealth_left > 0.0:
+		bits |= 2
+	if overcharge_left > 0.0:
+		bits |= 4
+	if magnet_left > 0.0:
+		bits |= 8
+	if slow_left > 0.0:
+		bits |= 16
+	if score_mult_left > 0.0:
+		bits |= 32
+	return bits
+
+
+func _paint_status() -> void:
+	if stealth_left > 0.0:
+		modulate = Color(0.72, 0.80, 1.0, 0.42)
+	elif invuln > 0.0:
+		modulate = Color(1, 1, 1, 0.55 + 0.45 * absf(sin(Time.get_ticks_msec() * 0.02)))
+	else:
+		modulate = Color.WHITE
+	if overcharge_left > 0.0 and stealth_left <= 0.0:
+		modulate = Color(1.12, 0.92, 0.58, modulate.a)
+
+
+func _draw() -> void:
+	if shield_left <= 0.0:
+		return
+	var pulse := 1.0 + 0.05 * sin(Time.get_ticks_msec() * 0.012)
+	draw_circle(Vector2(0.0, -30.0), 48.0 * pulse, Color(0.32, 0.90, 1.0, 0.16))
+	draw_circle(Vector2(0.0, -30.0), 34.0 * pulse, Color(0.55, 0.96, 1.0, 0.10))
+
+
+func apply_powerup(kind: Powerup.Kind) -> String:
+	match kind:
+		Powerup.Kind.SHIELD:
+			shield_left = Powerup.duration(kind)
+		Powerup.Kind.HEALTH:
+			var gained := heal(pack_heal)
+			effects_changed.emit()
+			return "PACK +%d" % gained if gained > 0 else "FULL"
+		Powerup.Kind.STEALTH:
+			stealth_left = Powerup.duration(kind)
+		Powerup.Kind.OVERCHARGE:
+			overcharge_left = Powerup.duration(kind)
+		Powerup.Kind.MAGNET:
+			magnet_left = Powerup.duration(kind)
+		Powerup.Kind.SLOW:
+			slow_left = Powerup.duration(kind)
+		Powerup.Kind.SCORE:
+			score_mult_left = Powerup.duration(kind)
+	effects_changed.emit()
+	queue_redraw()
+	return Powerup.title(kind)
+
+
+func consume_shield() -> bool:
+	if shield_left <= 0.0:
+		return false
+	shield_left = 0.0
+	invuln = maxf(invuln, 0.28)
+	effects_changed.emit()
+	queue_redraw()
+	return true
+
+
+func has_shield() -> bool:
+	return shield_left > 0.0
+
+
+func is_stealthed() -> bool:
+	return stealth_left > 0.0
+
+
+func has_magnet() -> bool:
+	return pack_magnet or magnet_left > 0.0
+
+
+func has_slow_field() -> bool:
+	return slow_left > 0.0
+
+
+func strike_power() -> int:
+	return strike_damage + (1 if overcharge_left > 0.0 else 0)
+
+
+func score_mult() -> float:
+	return Powerup.SCORE_POWER if score_mult_left > 0.0 else 1.0
+
+
+func effect_status() -> Array:
+	var rows: Array = []
+	var timed: Array = [
+		[shield_left, Powerup.Kind.SHIELD],
+		[stealth_left, Powerup.Kind.STEALTH],
+		[overcharge_left, Powerup.Kind.OVERCHARGE],
+		[magnet_left, Powerup.Kind.MAGNET],
+		[slow_left, Powerup.Kind.SLOW],
+		[score_mult_left, Powerup.Kind.SCORE],
+	]
+	for row in timed:
+		var left := float(row[0])
+		if left <= 0.0:
+			continue
+		var kind: Powerup.Kind = row[1]
+		rows.append({
+			"id": Powerup.id_of(kind),
+			"title": Powerup.title(kind),
+			"left": left,
+			"color": Powerup.tint(kind),
+		})
+	return rows
 
 
 func is_launching() -> bool:
@@ -390,6 +527,8 @@ func strikes(bot: Enemy) -> bool:
 
 func take_hit() -> void:
 	if is_invulnerable() or hp <= 0:
+		return
+	if consume_shield():
 		return
 	hp -= 1
 	invuln = HURT_IFRAMES

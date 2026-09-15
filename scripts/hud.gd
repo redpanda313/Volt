@@ -15,6 +15,7 @@ var _meter: ProgressBar
 var _hearts: HBoxContainer
 var _hint: Label
 var _toast: Label
+var _effects: VBoxContainer
 var _level_up: Control
 var _game_over: Control
 var _over_body: Label
@@ -121,6 +122,14 @@ func _build() -> void:
 	_toast.text = ""
 	root.add_child(_toast)
 
+	_effects = VBoxContainer.new()
+	_effects.name = "Effects"
+	_effects.position = Vector2(488, 126)
+	_effects.size = Vector2(216, 140)
+	_effects.add_theme_constant_override("separation", 1)
+	_effects.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_effects)
+
 	_level_up = _build_level_up()
 	root.add_child(_level_up)
 
@@ -181,6 +190,33 @@ func fade_hint() -> void:
 		return
 	var tween := create_tween()
 	tween.tween_property(_hint, "modulate:a", 0.0, 0.6).set_delay(6.5)
+
+
+func set_effects(rows: Array) -> void:
+	if _effects == null:
+		return
+	var i := 0
+	for row in rows:
+		var d: Dictionary = row
+		var lab: Label
+		if i < _effects.get_child_count():
+			lab = _effects.get_child(i) as Label
+		else:
+			lab = Label.new()
+			lab.add_theme_font_size_override("font_size", 16)
+			lab.add_theme_constant_override("outline_size", 4)
+			lab.add_theme_color_override("font_outline_color", Color(0.05, 0.06, 0.12, 0.85))
+			lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_effects.add_child(lab)
+		lab.text = "%s  %.1f" % [str(d.get("title", "")), float(d.get("left", 0.0))]
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		lab.size = Vector2(216, 20)
+		lab.add_theme_color_override("font_color", d.get("color", Color(0.8, 0.95, 1.0)))
+		lab.visible = true
+		i += 1
+	while i < _effects.get_child_count():
+		(_effects.get_child(i) as CanvasItem).visible = false
+		i += 1
 
 
 func toast(text: String) -> void:
