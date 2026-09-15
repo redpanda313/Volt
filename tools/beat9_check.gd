@@ -56,10 +56,11 @@ func _init() -> void:
 	failed += _expect(_text_has("res://PLAYTEST.md", "SHIELD"), "PLAYTEST shield")
 	failed += _expect(_text_has("res://PLAYTEST.md", "SCORE ×2"), "PLAYTEST score")
 	failed += _expect(_text_has("res://art/night8/README.md", "carrier_01_hover.png"), "night8 readme drone")
-	if _png_exists("res://art/night8/carrier_drone/carrier_01_hover.png"):
-		failed += _expect(art.has_night8_drones(), "night8 carrier 6 wired")
-	if _png_exists("res://art/night8/powerups/01_bubble_shield.png"):
-		failed += _expect(art.has_night8_powerups(), "night8 powerups 7 wired")
+	failed += _expect(art.has_night8_drones(), "night8 carrier 6 wired")
+	failed += _expect(art.has_night8_powerups(), "night8 powerups 7 wired")
+	failed += _expect(_png_exists("res://art/night8/carrier_drone/carrier_04_drop_crate.png"), "drop crate png")
+	failed += _expect(_png_exists("res://art/night8/powerups/powerups_sheet_labeled.png"), "labeled sheet png")
+	failed += _expect(_text_has("res://scripts/art.gd", "NIGHT8_POWERUP_RECTS"), "sheet crop rects")
 	art.free()
 	if failed > 0:
 		push_error("beat9_check failed: %d" % failed)

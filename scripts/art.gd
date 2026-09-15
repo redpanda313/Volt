@@ -47,6 +47,17 @@ const NIGHT8_POWERUP_FILES: Array[String] = [
 	"06_slow_field.png",
 	"07_score_mult.png",
 ]
+## Icon cells on powerups_sheet_labeled.png (1280×720). Individual 05–07 slices clip two tiles.
+const NIGHT8_POWERUP_SHEET := "res://art/night8/powerups/powerups_sheet_labeled.png"
+const NIGHT8_POWERUP_RECTS: Array[Rect2i] = [
+	Rect2i(70, 50, 210, 210),
+	Rect2i(380, 50, 210, 210),
+	Rect2i(700, 50, 210, 210),
+	Rect2i(970, 50, 230, 220),
+	Rect2i(80, 360, 210, 200),
+	Rect2i(380, 360, 210, 200),
+	Rect2i(690, 360, 210, 200),
+]
 
 const HUD_TOP := "res://art/night2/hud/hud_top.png"
 const HUD_METER := "res://art/night2/hud/hud_meter.png"
@@ -481,16 +492,35 @@ func night8_powerup_tex(kind: int) -> Texture2D:
 		return null
 	if not _n8_power_ready:
 		_n8_power.clear()
-		for file_name in NIGHT8_POWERUP_FILES:
-			var path := NIGHT8_POWERUPS + file_name
-			var texture: Texture2D = null
-			if ResourceLoader.exists(path):
-				texture = load(path) as Texture2D
+		for i in NIGHT8_POWERUP_FILES.size():
+			var texture := _powerup_from_sheet(i)
+			if texture == null:
+				var path := NIGHT8_POWERUPS + NIGHT8_POWERUP_FILES[i]
+				if ResourceLoader.exists(path):
+					texture = load(path) as Texture2D
 			_n8_power.append(texture)
 		_n8_power_ready = true
 	if kind < _n8_power.size():
 		return _n8_power[kind]
 	return null
+
+
+func _powerup_from_sheet(kind: int) -> Texture2D:
+	if kind < 0 or kind >= NIGHT8_POWERUP_RECTS.size():
+		return null
+	if not ResourceLoader.exists(NIGHT8_POWERUP_SHEET):
+		return null
+	var sheet := load(NIGHT8_POWERUP_SHEET) as Texture2D
+	if sheet == null:
+		return null
+	var img := sheet.get_image()
+	if img == null:
+		return null
+	var rect: Rect2i = NIGHT8_POWERUP_RECTS[kind]
+	rect = rect.intersection(Rect2i(0, 0, img.get_width(), img.get_height()))
+	if rect.size.x < 8 or rect.size.y < 8:
+		return null
+	return ImageTexture.create_from_image(img.get_region(rect))
 
 
 func has_night8_powerups() -> bool:

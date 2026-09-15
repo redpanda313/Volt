@@ -94,7 +94,7 @@ See **[PLAYTEST.md](PLAYTEST.md)** for the click-through against Pete’s notes,
 
 - **Drone ferries:** Carriers cross the screen with one of seven powerups. Collect on contact or tap.
 - **Seven effects:** bubble shield, health, stealth, overcharge, magnet, slow field, score ×2. Timed ones have HUD countdowns.
-- **Night8 art hook:** `art/night8/carrier_drone/` + `art/night8/powerups/`. Placeholders if slices are not in the pack yet. No invented Sable frames.
+- **Night8 art:** `art/night8/carrier_drone/` + `art/night8/powerups/` (sheet-cropped icon tiles). Placeholders only if a slice is missing. No invented Sable frames.
 - **Cadence:** first drone at 5.60s, then ~8.20s (floor 6.40s), one at a time, shuffle bag of all 7.
 - Beat 8 camera / Scout −25% / jump-climb / anti-bury / sparse endless pads / size lock stay.
 - HTML5 Pages path unchanged (single-thread Web export). After merge, redeploy via **Actions → Deploy HTML5 to GitHub Pages** on `main`.

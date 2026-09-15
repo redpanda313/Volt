@@ -21,11 +21,11 @@ Local HTML5: `GODOT=godot ./tools/export_web.sh` then `python3 -m http.server 80
 
 ## Checklist vs Pete’s beat-9 notes
 
-1. **Drones ferry powerups** — A carrier flies left↔right across the 9:16 view with **one** of the seven pickups hanging under it. Night8 `carrier_drone/` + `powerups/` frames when present; otherwise a flat drone body and a colored orb (not Sable).
+1. **Drones ferry powerups** — A carrier flies left↔right across the 9:16 view with **one** of the seven pickups hanging under it. Night8 `carrier_drone/` + `powerups/` (sheet-cropped icon tiles). Placeholder ferry / orb only if a slice is missing.
 2. **Collect on contact / tap** — Touch the drone or cargo, or tap it. Magnet (temp or PACK PULL) widens the grab and pulls the ferry in.
 3. **Readable cadence** — One drone on screen. First ferry at **5.60s**. Then every **8.20s**, easing toward **6.40s** as kills rise (`DRONE_DECAY = 0.985`). A shuffle bag deals all **7** kinds before a repeat, so a normal climb sees each effect. Does not change the beat-6 bot spawn curve.
 4. **All 7 effects** — See table below. Timed ones show a HUD cue under the hearts (`SHIELD 4.2`). Same kind collected again **refreshes** the clock.
-5. **Night8 hook** — `art/night8/carrier_drone/` and `art/night8/powerups/` (plus `sheets/` `.gdignore`, labeled sheet excluded from Web). API: `Art.night8_drone_frames`, `Art.drone_frames`, `Art.powerup_tex`, `Art.has_night8_drones`, `Art.has_night8_powerups`.
+5. **Night8 art** — `art/night8/carrier_drone/` (6 frames) and `art/night8/powerups/` (sheet cells + slices). `sheets/` is `.gdignore`’d. API: `Art.night8_drone_frames`, `Art.drone_frames`, `Art.powerup_tex`, `Art.has_night8_drones`, `Art.has_night8_powerups`.
 6. **Keep beat 8 feel** — Camera offset **168**, Scout walk **161.25**, jump-climb (no walk-surf), anti-bury, sparse pads, endless climb, size lock `Art.ACTOR_SCALE = 0.516375`. Health-pack drop rule unchanged. Do **not** shrink actors to fit drones.
 
 ## Powerups (beat 9)
